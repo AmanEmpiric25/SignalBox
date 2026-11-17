@@ -14,7 +14,7 @@ class SettingsRepository {
     return AppSettings(
       themeMode: _themeModeFromName(_prefs.getString(PrefKeys.themeMode)),
       retentionDays:
-          _prefs.getInt('settings.retentionDays') ??
+          _prefs.getInt(PrefKeys.retentionDays) ??
           AppConstants.defaultRetentionDays,
       hidePreviewContent: _prefs.getBool(PrefKeys.hidePreviewContent) ?? false,
       groupByApp: _prefs.getBool(PrefKeys.groupByApp) ?? false,
