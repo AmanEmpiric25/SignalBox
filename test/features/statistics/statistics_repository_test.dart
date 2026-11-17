@@ -36,13 +36,15 @@ void main() {
     bool isRead = false,
     int? categoryId,
     DateTime? postedAt,
+    String title = 'Title',
+    String body = 'Body',
   }) {
     return notifications.insert(
       NotificationItem(
         id: 0,
         packageName: package,
-        title: 'Title',
-        body: 'Body',
+        title: title,
+        body: body,
         postedAt: postedAt ?? DateTime.now(),
         priority: priority,
         categoryId: categoryId,
@@ -165,5 +167,33 @@ void main() {
     );
     expect(stats.perApp, hasLength(1));
     expect(stats.perApp.single.packageName, 'com.slack');
+  });
+
+  test('a search query narrows the per-app breakdown by body text', () async {
+    await db.insert('app_sources', {
+      'package_name': 'com.slack',
+      'app_label': 'Slack',
+      'is_muted': 0,
+      'first_seen_at': DateTime.now().millisecondsSinceEpoch,
+    });
+    await seed(title: 'Payment received', body: 'UPI transaction credited');
+    await seed(package: 'com.slack', title: 'Priya Sharma', body: 'On my way');
+
+    // StatisticsRepository is the only caller that passes `alias: 'n'`, so this
+    // exercises the qualified-column form of the search clause.
+    final stats = await statistics.load(const NotificationFilter(query: 'UPI'));
+    expect(stats.perApp, hasLength(1));
+    expect(stats.perApp.single.packageName, 'com.whatsapp');
+    expect(stats.perApp.single.count, 1);
+  });
+
+  test('a search query narrows the per-category breakdown', () async {
+    await seed(title: 'Payment received', body: 'UPI transaction credited');
+    await seed(title: 'Priya Sharma', body: 'On my way');
+
+    final stats = await statistics.load(const NotificationFilter(query: 'UPI'));
+    final counted = stats.perCategory.where((c) => c.count > 0).toList();
+    expect(counted, hasLength(1));
+    expect(counted.single.count, 1);
   });
 }

@@ -29,6 +29,12 @@ class NotificationQuery {
       // A notification is just as findable by what it said as by its title, so
       // the query matches either field. The clause is parenthesised because
       // every clause in this list is joined with AND.
+      //
+      // Case folding here is ASCII-only: SQLite's LIKE lowercases A-Z and
+      // nothing else unless the build carries ICU, and `lower()` has the same
+      // limit. So `upi` finds `UPI`, but a non-ASCII query only matches text
+      // in the same case. Treat the search as case insensitive for ASCII and
+      // case sensitive for everything else.
       const escape = "ESCAPE '$_likeEscape'";
       clauses.add('(${c}title LIKE ? $escape OR ${c}body LIKE ? $escape)');
       final pattern = '%${_escapeLike(query)}%';
