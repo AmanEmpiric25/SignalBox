@@ -195,7 +195,8 @@ class _InboxList extends ConsumerWidget {
   /// Longest query echoed back in the empty-state title, before an ellipsis.
   ///
   /// A pasted paragraph would otherwise push the title over several lines and
-  /// bury the message underneath it.
+  /// bury the message underneath it. Counted in grapheme clusters, so this is
+  /// 20 characters as a reader would count them, in any script.
   static const int _maxQueryInTitle = 20;
 
   final List<NotificationItem> items;
@@ -206,10 +207,16 @@ class _InboxList extends ConsumerWidget {
   final Future<void> Function() onRefresh;
 
   /// Trims [query] to [_maxQueryInTitle] characters so it fits in a title.
-  static String _shortenForTitle(String query) =>
-      query.length <= _maxQueryInTitle
-      ? query
-      : '${query.substring(0, _maxQueryInTitle)}…';
+  ///
+  /// Cuts on grapheme clusters rather than UTF-16 code units. `substring`
+  /// would slice a surrogate pair in half and leave the user looking at a
+  /// replacement character inside their own search term.
+  static String _shortenForTitle(String query) {
+    final chars = query.characters;
+    return chars.length <= _maxQueryInTitle
+        ? query
+        : '${chars.take(_maxQueryInTitle)}…';
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

@@ -234,6 +234,49 @@ void main() {
     );
   });
 
+  testWidgets('a truncated multi-byte query is not corrupted', (tester) async {
+    await addNotification(title: 'Priya Sharma');
+    await pumpInbox(tester);
+
+    // 26 grapheme clusters, 51 UTF-16 code units. The leading 'x' shifts the
+    // cut onto an odd code-unit boundary, which is where substring(0, 20)
+    // used to slice a surrogate pair in half.
+    await tester.enterText(find.byType(TextField), 'x${'😀' * 25}');
+    await tester.pumpAndSettle();
+
+    final title = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((t) => t.data)
+        .whereType<String>()
+        .firstWhere((t) => t.startsWith('No matches for'));
+
+    // Assert the string is well formed, not merely short: a cut that corrupts
+    // the text can still satisfy a length check.
+    expect(title, isNot(contains('\ufffd')));
+    expect(
+      title.codeUnits.where((u) => u >= 0xD800 && u <= 0xDFFF).length.isEven,
+      isTrue,
+      reason: 'surrogates must remain in matched pairs',
+    );
+    // 20 characters kept, so 'x' plus 19 emoji, then the ellipsis.
+    expect(title, 'No matches for "x${'😀' * 19}\u2026"');
+  });
+
+  testWidgets('truncation counts characters, not UTF-16 code units', (
+    tester,
+  ) async {
+    await addNotification(title: 'Priya Sharma');
+    await pumpInbox(tester);
+
+    // 15 emoji is 30 code units but only 15 characters, so it is under the
+    // limit and must come back whole.
+    final query = '😀' * 15;
+    await tester.enterText(find.byType(TextField), query);
+    await tester.pumpAndSettle();
+
+    expect(find.text('No matches for "$query"'), findsOneWidget);
+  });
+
   testWidgets('a whitespace-only query is not treated as a search', (
     tester,
   ) async {
