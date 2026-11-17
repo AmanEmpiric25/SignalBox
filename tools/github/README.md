@@ -1,5 +1,29 @@
 # GitHub setup tooling
 
+## Publishing to an account
+
+`publish_to.sh` does the whole thing in one command: creates the repository,
+pushes `main`, creates the labels, milestones and all 27 issues, and protects
+`main`.
+
+```bash
+gh auth login                        # add the account, if it is not already
+gh auth switch --user <owner>
+./tools/github/publish_to.sh <owner> SignalBox public
+```
+
+It refuses to run when `gh` is authenticated as somebody other than `<owner>`,
+so it cannot publish to the wrong account by accident. Re-running it is safe:
+an existing repository is reused and nothing is duplicated.
+
+It leaves `enforce_admins` **off**, so the owner can still push directly while
+contributors go through reviewed pull requests. Turn it on with:
+
+```bash
+gh api -X POST repos/<owner>/SignalBox/branches/main/protection/enforce_admins
+```
+
+
 `issues.json` is the generated catalogue of all 27 issues: title, labels,
 milestone and the full markdown body. It is the single source that
 `docs/SEEDED_BUGS.md`, `docs/MISSING_FEATURES.md` and `docs/IMPROVEMENTS.md`
