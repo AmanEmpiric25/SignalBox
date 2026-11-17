@@ -29,7 +29,7 @@ Ground rules for this catalogue:
 | `B3` | application totals double when two rules target the same app | applications / grouping | Intermediate | Open |
 | `B4` | unread counter does not refresh after deleting a notification | notifications / state management | Beginner | Open |
 | `B5` | snoozed notifications reappear before their snooze time | notifications / snooze | Intermediate | Open |
-| `B6` | no empty state when a search returns no results | notifications / UI | Beginner | Open |
+| `B6` | no empty state when a search returns no results | notifications / UI | Beginner | Fixed in [#30](https://github.com/AmanEmpiric25/SignalBox/pull/30) |
 | `B7` | inbox pagination skips one notification per page | notifications / pagination | Intermediate | Open |
 | `B8` | statistics total ignores the active filters | statistics | Intermediate | Open |
 | `B9` | notifications with identical timestamps sort inconsistently | notifications / sorting | Intermediate | Open |
@@ -285,6 +285,12 @@ The clause is appended at the end of `NotificationQuery.where`. The bound should
 ---
 
 ## `B6` no empty state when a search returns no results
+
+> **Fixed** in [#30](https://github.com/AmanEmpiric25/SignalBox/pull/30). A
+> search that matches nothing now gets its own empty state, separate from the
+> first-run one, and the regression tests named below are in the suite. The
+> description is kept for reference; the reproduction steps no longer reproduce.
+
 
 **Area:** notifications / UI  
 **Difficulty:** Beginner  

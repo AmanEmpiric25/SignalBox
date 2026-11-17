@@ -150,6 +150,103 @@ void main() {
     expect(find.text('Priya Sharma'), findsNothing);
   });
 
+  testWidgets('a search that matches nothing explains itself', (tester) async {
+    await addNotification(title: 'Priya Sharma');
+    await pumpInbox(tester);
+
+    await tester.enterText(find.byType(TextField), 'zomato');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(EmptyState), findsOneWidget);
+    expect(find.text('No matches for "zomato"'), findsOneWidget);
+    expect(
+      find.text('No notification title or body contains this text.'),
+      findsOneWidget,
+    );
+    expect(find.widgetWithText(OutlinedButton, 'Clear search'), findsOneWidget);
+  });
+
+  testWidgets('the no-match state does not claim the inbox is empty', (
+    tester,
+  ) async {
+    await addNotification(title: 'Priya Sharma');
+    await pumpInbox(tester);
+
+    await tester.enterText(find.byType(TextField), 'zomato');
+    await tester.pumpAndSettle();
+
+    // The inbox is not empty - the query simply missed. Saying otherwise
+    // reads as data loss, and Refresh would re-fetch nothing.
+    expect(find.text('Your inbox is empty'), findsNothing);
+    expect(find.widgetWithText(OutlinedButton, 'Refresh'), findsNothing);
+  });
+
+  testWidgets('the first-run empty state still appears with no query', (
+    tester,
+  ) async {
+    await pumpInbox(tester);
+
+    // The failure mode of splitting these two states is the new one
+    // swallowing the old one, so assert the negative as well.
+    expect(find.text('Your inbox is empty'), findsOneWidget);
+    expect(find.textContaining('No matches for'), findsNothing);
+    expect(find.widgetWithText(OutlinedButton, 'Refresh'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Clear search'), findsNothing);
+  });
+
+  testWidgets('clearing the search from the empty state restores the list', (
+    tester,
+  ) async {
+    await addNotification(title: 'Priya Sharma');
+    await pumpInbox(tester);
+
+    await tester.enterText(find.byType(TextField), 'zomato');
+    await tester.pumpAndSettle();
+    expect(find.text('Priya Sharma'), findsNothing);
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Clear search'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(EmptyState), findsNothing);
+    expect(find.text('Priya Sharma'), findsOneWidget);
+    // The action also has to clear the text field, not just the filter.
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      isEmpty,
+    );
+  });
+
+  testWidgets('a long query is truncated in the empty-state title', (
+    tester,
+  ) async {
+    await addNotification(title: 'Priya Sharma');
+    await pumpInbox(tester);
+
+    await tester.enterText(
+      find.byType(TextField),
+      'a very long search query that nobody would ever type',
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('No matches for "a very long search q\u2026"'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a whitespace-only query is not treated as a search', (
+    tester,
+  ) async {
+    await pumpInbox(tester);
+
+    await tester.enterText(find.byType(TextField), '   ');
+    await tester.pumpAndSettle();
+
+    // A blank query matches everything, so this is still the first-run state.
+    expect(find.text('Your inbox is empty'), findsOneWidget);
+    expect(find.textContaining('No matches for'), findsNothing);
+  });
+
   testWidgets('a filter badge appears once a filter is active', (tester) async {
     await addNotification();
     await pumpInbox(tester);
