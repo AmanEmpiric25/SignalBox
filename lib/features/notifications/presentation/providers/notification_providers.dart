@@ -162,13 +162,21 @@ class InboxNotifier extends AsyncNotifier<InboxState> {
   Future<void> delete(int id) async {
     await _repository.delete(id);
     _remove(id);
+    // Deleting an unread notification changes the unread total, which the
+    // dashboard card and the app bar badge both read from here.
+    ref.invalidate(unreadCountProvider);
   }
 
   Future<void> deleteMany(Iterable<int> ids) async {
-    await _repository.deleteMany(ids);
+    final idSet = ids.toSet();
+    // Nothing was deleted, so nothing downstream needs to re-query.
+    if (idSet.isEmpty) return;
+
+    await _repository.deleteMany(idSet);
+    ref.invalidate(unreadCountProvider);
+
     final current = state.valueOrNull;
     if (current == null) return;
-    final idSet = ids.toSet();
     state = AsyncData(
       current.copyWith(
         items: current.items.where((i) => !idSet.contains(i.id)).toList(),
