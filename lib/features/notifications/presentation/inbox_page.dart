@@ -42,6 +42,11 @@ class _InboxPageState extends ConsumerState<InboxPage> {
     super.dispose();
   }
 
+  void _clearSearch() {
+    _searchController.clear();
+    ref.read(inboxFilterProvider.notifier).setQuery('');
+  }
+
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     final position = _scrollController.position;
@@ -123,10 +128,7 @@ class _InboxPageState extends ConsumerState<InboxPage> {
                     : IconButton(
                         tooltip: 'Clear search',
                         icon: const Icon(Icons.close_rounded, size: 18),
-                        onPressed: () {
-                          _searchController.clear();
-                          ref.read(inboxFilterProvider.notifier).setQuery('');
-                        },
+                        onPressed: _clearSearch,
                       ),
               ),
               onChanged: (value) =>
@@ -169,6 +171,7 @@ class _InboxPageState extends ConsumerState<InboxPage> {
                 isLoadingMore: state.isLoadingMore,
                 scrollController: _scrollController,
                 searchQuery: filter.query,
+                onClearSearch: _clearSearch,
                 onRefresh: () => ref.read(inboxProvider.notifier).refresh(),
               ),
             ),
@@ -185,26 +188,66 @@ class _InboxList extends ConsumerWidget {
     required this.isLoadingMore,
     required this.scrollController,
     required this.searchQuery,
+    required this.onClearSearch,
     required this.onRefresh,
   });
+
+  /// Longest query echoed back in the empty-state title, before an ellipsis.
+  ///
+  /// A pasted paragraph would otherwise push the title over several lines and
+  /// bury the message underneath it. Counted in grapheme clusters, so this is
+  /// 20 characters as a reader would count them, in any script.
+  static const int _maxQueryInTitle = 20;
 
   final List<NotificationItem> items;
   final bool isLoadingMore;
   final ScrollController scrollController;
   final String searchQuery;
+  final VoidCallback onClearSearch;
   final Future<void> Function() onRefresh;
+
+  /// Trims [query] to [_maxQueryInTitle] characters so it fits in a title.
+  ///
+  /// Cuts on grapheme clusters rather than UTF-16 code units. `substring`
+  /// would slice a surrogate pair in half and leave the user looking at a
+  /// replacement character inside their own search term.
+  static String _shortenForTitle(String query) {
+    final chars = query.characters;
+    return chars.length <= _maxQueryInTitle
+        ? query
+        : '${chars.take(_maxQueryInTitle)}…';
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (items.isEmpty && searchQuery.isEmpty) {
+    if (items.isEmpty) {
+      // Two different situations, and they need different words. Nothing
+      // captured yet is a first-run state. A search that matched nothing is
+      // not: the inbox may be full, so telling that user the inbox is empty
+      // reads as data loss, and offering Refresh invites them to re-fetch
+      // something that was never missing.
+      final query = searchQuery.trim();
+      if (query.isEmpty) {
+        return EmptyState(
+          icon: Icons.inbox_rounded,
+          title: 'Your inbox is empty',
+          message: 'Captured notifications will appear here.',
+          action: OutlinedButton.icon(
+            onPressed: onRefresh,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Refresh'),
+          ),
+        );
+      }
+
       return EmptyState(
-        icon: Icons.inbox_rounded,
-        title: 'Your inbox is empty',
-        message: 'Captured notifications will appear here.',
+        icon: Icons.search_off_rounded,
+        title: 'No matches for "${_shortenForTitle(query)}"',
+        message: 'No notification title or body contains this text.',
         action: OutlinedButton.icon(
-          onPressed: onRefresh,
-          icon: const Icon(Icons.refresh_rounded, size: 18),
-          label: const Text('Refresh'),
+          onPressed: onClearSearch,
+          icon: const Icon(Icons.close_rounded, size: 18),
+          label: const Text('Clear search'),
         ),
       );
     }

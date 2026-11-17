@@ -150,6 +150,146 @@ void main() {
     expect(find.text('Priya Sharma'), findsNothing);
   });
 
+  testWidgets('a search that matches nothing explains itself', (tester) async {
+    await addNotification(title: 'Priya Sharma');
+    await pumpInbox(tester);
+
+    await tester.enterText(find.byType(TextField), 'zomato');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(EmptyState), findsOneWidget);
+    expect(find.text('No matches for "zomato"'), findsOneWidget);
+    expect(
+      find.text('No notification title or body contains this text.'),
+      findsOneWidget,
+    );
+    expect(find.widgetWithText(OutlinedButton, 'Clear search'), findsOneWidget);
+  });
+
+  testWidgets('the no-match state does not claim the inbox is empty', (
+    tester,
+  ) async {
+    await addNotification(title: 'Priya Sharma');
+    await pumpInbox(tester);
+
+    await tester.enterText(find.byType(TextField), 'zomato');
+    await tester.pumpAndSettle();
+
+    // The inbox is not empty - the query simply missed. Saying otherwise
+    // reads as data loss, and Refresh would re-fetch nothing.
+    expect(find.text('Your inbox is empty'), findsNothing);
+    expect(find.widgetWithText(OutlinedButton, 'Refresh'), findsNothing);
+  });
+
+  testWidgets('the first-run empty state still appears with no query', (
+    tester,
+  ) async {
+    await pumpInbox(tester);
+
+    // The failure mode of splitting these two states is the new one
+    // swallowing the old one, so assert the negative as well.
+    expect(find.text('Your inbox is empty'), findsOneWidget);
+    expect(find.textContaining('No matches for'), findsNothing);
+    expect(find.widgetWithText(OutlinedButton, 'Refresh'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Clear search'), findsNothing);
+  });
+
+  testWidgets('clearing the search from the empty state restores the list', (
+    tester,
+  ) async {
+    await addNotification(title: 'Priya Sharma');
+    await pumpInbox(tester);
+
+    await tester.enterText(find.byType(TextField), 'zomato');
+    await tester.pumpAndSettle();
+    expect(find.text('Priya Sharma'), findsNothing);
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Clear search'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(EmptyState), findsNothing);
+    expect(find.text('Priya Sharma'), findsOneWidget);
+    // The action also has to clear the text field, not just the filter.
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      isEmpty,
+    );
+  });
+
+  testWidgets('a long query is truncated in the empty-state title', (
+    tester,
+  ) async {
+    await addNotification(title: 'Priya Sharma');
+    await pumpInbox(tester);
+
+    await tester.enterText(
+      find.byType(TextField),
+      'a very long search query that nobody would ever type',
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('No matches for "a very long search q\u2026"'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a truncated multi-byte query is not corrupted', (tester) async {
+    await addNotification(title: 'Priya Sharma');
+    await pumpInbox(tester);
+
+    // 26 grapheme clusters, 51 UTF-16 code units. The leading 'x' shifts the
+    // cut onto an odd code-unit boundary, which is where substring(0, 20)
+    // used to slice a surrogate pair in half.
+    await tester.enterText(find.byType(TextField), 'x${'😀' * 25}');
+    await tester.pumpAndSettle();
+
+    final title = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((t) => t.data)
+        .whereType<String>()
+        .firstWhere((t) => t.startsWith('No matches for'));
+
+    // Assert the string is well formed, not merely short: a cut that corrupts
+    // the text can still satisfy a length check.
+    expect(title, isNot(contains('\ufffd')));
+    expect(
+      title.codeUnits.where((u) => u >= 0xD800 && u <= 0xDFFF).length.isEven,
+      isTrue,
+      reason: 'surrogates must remain in matched pairs',
+    );
+    // 20 characters kept, so 'x' plus 19 emoji, then the ellipsis.
+    expect(title, 'No matches for "x${'😀' * 19}\u2026"');
+  });
+
+  testWidgets('truncation counts characters, not UTF-16 code units', (
+    tester,
+  ) async {
+    await addNotification(title: 'Priya Sharma');
+    await pumpInbox(tester);
+
+    // 15 emoji is 30 code units but only 15 characters, so it is under the
+    // limit and must come back whole.
+    final query = '😀' * 15;
+    await tester.enterText(find.byType(TextField), query);
+    await tester.pumpAndSettle();
+
+    expect(find.text('No matches for "$query"'), findsOneWidget);
+  });
+
+  testWidgets('a whitespace-only query is not treated as a search', (
+    tester,
+  ) async {
+    await pumpInbox(tester);
+
+    await tester.enterText(find.byType(TextField), '   ');
+    await tester.pumpAndSettle();
+
+    // A blank query matches everything, so this is still the first-run state.
+    expect(find.text('Your inbox is empty'), findsOneWidget);
+    expect(find.textContaining('No matches for'), findsNothing);
+  });
+
   testWidgets('a filter badge appears once a filter is active', (tester) async {
     await addNotification();
     await pumpInbox(tester);
