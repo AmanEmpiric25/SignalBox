@@ -33,7 +33,7 @@ Ground rules for this catalogue:
 | `B7` | inbox pagination skips one notification per page | notifications / pagination | Intermediate | Open |
 | `B8` | statistics total ignores the active filters | statistics | Intermediate | Open |
 | `B9` | notifications with identical timestamps sort inconsistently | notifications / sorting | Intermediate | Open |
-| `B10` | retention setting is not restored after restart | settings / persistence | Beginner | Open |
+| `B10` | retention setting is not restored after restart | settings / persistence | Beginner | Fixed in [#32](https://github.com/AmanEmpiric25/SignalBox/pull/32) |
 | `B11` | muting an application does not remove it from the inbox | applications / notifications | Intermediate | Open |
 | `B12` | "mark all as read" ignores the active filter | notifications | Intermediate | Open |
 
@@ -480,6 +480,12 @@ Put the ordering in one constant used by every query in the repository.
 ---
 
 ## `B10` retention setting is not restored after restart
+
+> **Fixed** in [#32](https://github.com/AmanEmpiric25/SignalBox/pull/32). The
+> read now goes through `PrefKeys.retentionDays` like every other preference,
+> and the regression tests named below are in the suite. The description is
+> kept for reference; the reproduction steps no longer reproduce.
+
 
 **Area:** settings / persistence  
 **Difficulty:** Beginner  
