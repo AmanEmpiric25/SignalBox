@@ -199,6 +199,77 @@ void main() {
       );
       expect(items, hasLength(1));
     });
+
+    test('search matches text in the body', () async {
+      await repository.insert(
+        build(
+          title: 'Payment received',
+          body: 'Your UPI transaction of INR 2,400 was credited successfully.',
+        ),
+      );
+      await repository.insert(build(title: 'Priya Sharma', body: 'On my way'));
+
+      final items = await repository.all(
+        filter: const NotificationFilter(query: 'UPI'),
+      );
+      expect(items, hasLength(1));
+      expect(items.single.title, 'Payment received');
+    });
+
+    test('a body match is case insensitive too', () async {
+      await repository.insert(
+        build(title: 'Payment received', body: 'UPI transaction credited'),
+      );
+
+      final items = await repository.all(
+        filter: const NotificationFilter(query: 'upi'),
+      );
+      expect(items, hasLength(1));
+    });
+
+    test('search returns nothing when neither field matches', () async {
+      await repository.insert(build(title: 'Payment received', body: 'UPI'));
+      await repository.insert(build(title: 'Priya Sharma', body: 'On my way'));
+
+      final items = await repository.all(
+        filter: const NotificationFilter(query: 'zomato'),
+      );
+      expect(items, isEmpty);
+    });
+
+    test('a percent sign in the query is matched literally', () async {
+      await repository.insert(build(title: 'Flat 20% off today', body: 'Sale'));
+      await repository.insert(build(title: 'Priya Sharma', body: 'On my way'));
+
+      final items = await repository.all(
+        filter: const NotificationFilter(query: '%'),
+      );
+      expect(items, hasLength(1));
+      expect(items.single.title, 'Flat 20% off today');
+    });
+
+    test('an underscore in the query is matched literally', () async {
+      await repository.insert(build(title: 'build_failed', body: 'Job 12'));
+      // Would also match if `_` were still treated as a single-character
+      // wildcard, which is what makes this a regression test.
+      await repository.insert(build(title: 'buildXfailed', body: 'Job 13'));
+
+      final items = await repository.all(
+        filter: const NotificationFilter(query: 'd_f'),
+      );
+      expect(items, hasLength(1));
+      expect(items.single.title, 'build_failed');
+    });
+
+    test('a whitespace-only query returns every notification', () async {
+      await repository.insert(build(title: 'Payment received'));
+      await repository.insert(build(title: 'Priya Sharma'));
+
+      final items = await repository.all(
+        filter: const NotificationFilter(query: '   '),
+      );
+      expect(items, hasLength(2));
+    });
   });
 
   group('mutations', () {

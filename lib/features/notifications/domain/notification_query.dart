@@ -26,8 +26,13 @@ class NotificationQuery {
 
     final query = filter.query.trim();
     if (query.isNotEmpty) {
-      clauses.add('${c}title LIKE ?');
-      args.add('%$query%');
+      // A notification is just as findable by what it said as by its title, so
+      // the query matches either field. The clause is parenthesised because
+      // every clause in this list is joined with AND.
+      const escape = "ESCAPE '$_likeEscape'";
+      clauses.add('(${c}title LIKE ? $escape OR ${c}body LIKE ? $escape)');
+      final pattern = '%${_escapeLike(query)}%';
+      args.addAll([pattern, pattern]);
     }
 
     if (filter.packageNames.isNotEmpty) {
@@ -71,4 +76,17 @@ class NotificationQuery {
     if (clauses.isEmpty) return ('1 = 1', args);
     return (clauses.join(' AND '), args);
   }
+
+  /// Escape character used with SQL `LIKE`.
+  static const String _likeEscape = r'\';
+
+  /// Makes [value] safe to drop inside a `LIKE` pattern.
+  ///
+  /// Without this, a search for `%` or `_` would be read as a wildcard and
+  /// match far more than the user typed. The escape character itself is
+  /// doubled first, so that it cannot swallow the characters escaped after it.
+  static String _escapeLike(String value) => value
+      .replaceAll(_likeEscape, '$_likeEscape$_likeEscape')
+      .replaceAll('%', '$_likeEscape%')
+      .replaceAll('_', '${_likeEscape}_');
 }
