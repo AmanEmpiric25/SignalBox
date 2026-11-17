@@ -1,0 +1,125 @@
+name: Bug report
+description: Report something that behaves incorrectly
+title: "fix: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug.
+
+        **Please check first:** SignalBox ships with 12 deliberately seeded bugs,
+        catalogued in [`docs/SEEDED_BUGS.md`](https://github.com/amanempiricinfotech-hash/SignalBox/blob/main/docs/SEEDED_BUGS.md).
+        Those are known and already tracked. Also search the open issues.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Before you file this
+      options:
+        - label: I checked `docs/SEEDED_BUGS.md` and this is not one of the seeded bugs
+          required: true
+        - label: I searched the open issues and this is not a duplicate
+          required: true
+        - label: I can reproduce this on the latest `main`
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is wrong? One or two sentences.
+      placeholder: Searching for text that appears in a notification body returns no results.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: >
+        Numbered steps from a known starting state. State whether you are on the
+        seeded demo data or on real captured notifications.
+      placeholder: |
+        1. Launch the app on a fresh install (seeded demo data).
+        2. Open the Inbox tab.
+        3. Type "UPI" into the search field.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: What happened instead? Include any error text or stack trace.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Inbox / notifications
+        - Search and filtering
+        - Applications
+        - Categories
+        - Rules
+        - Statistics
+        - Settings
+        - Dashboard
+        - Android notification capture
+        - Database / persistence
+        - Build, CI or tooling
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often does it happen?
+      options:
+        - Every time
+        - Often, but not every time
+        - Rarely
+        - Happened once
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device and OS
+      placeholder: Pixel 7, Android 14 (or: Android emulator, API 34)
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: flutter doctor -v
+      description: Paste the output. It tells us your Flutter and SDK versions.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant `flutter run` or `adb logcat` output, if you have any.
+      render: shell
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, a screen recording, or a guess at the cause.

@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Known seeded bugs
+    url: https://github.com/amanempiricinfotech-hash/SignalBox/blob/main/docs/SEEDED_BUGS.md
+    about: SignalBox ships with 12 deliberate bugs. Check this catalogue before reporting one.
+  - name: Known unfinished features
+    url: https://github.com/amanempiricinfotech-hash/SignalBox/blob/main/docs/MISSING_FEATURES.md
+    about: 10 features are intentionally incomplete and already scoped. Check here before proposing one.
+  - name: Contributing guide
+    url: https://github.com/amanempiricinfotech-hash/SignalBox/blob/main/CONTRIBUTING.md
+    about: Workflow, branch naming, commit convention and the pull request checklist.
+  - name: Report a security vulnerability
+    url: https://github.com/amanempiricinfotech-hash/SignalBox/security/advisories/new
+    about: Do not open a public issue for a security problem.

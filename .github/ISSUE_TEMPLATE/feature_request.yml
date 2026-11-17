@@ -1,0 +1,108 @@
+name: Feature request
+description: Propose new functionality
+title: "feat: "
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the proposal.
+
+        **Please check first:** 10 features are already scoped and waiting for
+        contributors in [`docs/MISSING_FEATURES.md`](https://github.com/amanempiricinfotech-hash/SignalBox/blob/main/docs/MISSING_FEATURES.md).
+        If yours is one of those, comment on its existing issue instead.
+
+        SignalBox is local-first by design. Anything that needs a backend, an
+        account, or sending notification content off the device is out of scope.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Before you file this
+      options:
+        - label: I checked `docs/MISSING_FEATURES.md` and this is not already scoped
+          required: true
+        - label: I searched the open issues and this is not a duplicate
+          required: true
+        - label: This does not require a backend, an account, or uploading notification content
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What can a user not do today, and why does that matter?
+      placeholder: >
+        There is no way to get notification history out of the app, so it cannot
+        be analysed elsewhere and is lost on uninstall.
+    validations:
+      required: true
+
+  - type: textarea
+    id: story
+    attributes:
+      label: User story
+      description: "As a <user> I want <capability> so that <benefit>."
+      placeholder: >
+        As a SignalBox user I want to export my history as CSV so that I can
+        analyse it in a spreadsheet.
+    validations:
+      required: true
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Functional requirements
+      description: What must it do? One bullet per requirement.
+      placeholder: |
+        - Export every notification matching the active filter
+        - Columns: posted_at, package_name, app_label, title, body, priority, category
+        - Escape commas, quotes and newlines correctly
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: A checklist that makes "done" measurable and testable.
+      placeholder: |
+        - [ ] The exported file opens in a spreadsheet with one header row
+        - [ ] A body containing a comma and a quote survives a round trip
+        - [ ] Exporting an empty history produces a header-only file and says so
+    validations:
+      required: true
+
+  - type: textarea
+    id: ui
+    attributes:
+      label: Expected UI behaviour
+      description: Which screen, what the user sees, what happens on success and on failure.
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical
+    attributes:
+      label: Technical considerations
+      description: >
+        Affected layers, schema changes, new dependencies, performance or
+        permission implications.
+
+  - type: dropdown
+    id: difficulty
+    attributes:
+      label: Suggested difficulty
+      options:
+        - Beginner
+        - Intermediate
+        - Advanced
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else could solve this, and why is this better?

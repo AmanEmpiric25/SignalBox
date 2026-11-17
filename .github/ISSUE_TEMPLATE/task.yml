@@ -1,0 +1,87 @@
+name: Task
+description: A chore, refactor, test, documentation or performance task
+title: "chore: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for work that is neither a bug nor a user-facing feature:
+        refactoring, tests, documentation, performance, accessibility, tooling
+        and CI.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What needs doing, and why?
+      description: >
+        Describe the current state and what is wrong with it. Be concrete:
+        "Improve the UI" is not actionable and will be closed.
+      placeholder: >
+        `notification_items` has no secondary index, so every inbox page sorts
+        the whole table. That is fine at 60 rows and poor at 50,000.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - Performance
+        - Refactoring
+        - Tests
+        - Documentation
+        - Accessibility
+        - Responsive layout
+        - Build, CI or tooling
+        - Dependency maintenance
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Which files or areas does this touch? What is explicitly out of scope?
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: >
+        A measurable checklist. For performance work, say what must be measured
+        and reported, not just "make it faster".
+      placeholder: |
+        - [ ] Before/after timings from the same machine and dataset are in the PR
+        - [ ] A migration exists and is tested from the current schema version
+        - [ ] EXPLAIN QUERY PLAN shows the index being used
+    validations:
+      required: true
+
+  - type: textarea
+    id: tests
+    attributes:
+      label: Testing
+      description: What tests should be added or updated? Say so if none apply, and why.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: difficulty
+    attributes:
+      label: Difficulty
+      options:
+        - Beginner
+        - Intermediate
+        - Advanced
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Dependencies on other issues, references, prior discussion.
