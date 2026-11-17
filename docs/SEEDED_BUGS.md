@@ -16,27 +16,35 @@ Ground rules for this catalogue:
 - Existing tests assert correct behaviour only. None of them encode a seeded
   bug, so you will not have to delete a passing test to fix one. When you fix a
   bug, **add** the regression test named in its issue.
+- The **Status** column below says whether a bug is still live. When you fix
+  one, flip its row to `Fixed in #<pr>` and add the same note to its section, so
+  that nobody spends an evening reproducing a defect that is already gone.
 
 ## Index
 
-| ID | Bug | Area | Difficulty |
-| --- | --- | --- | --- |
-| `B1` | inbox search ignores notification body text | notifications / search | Beginner |
-| `B2` | date range filter excludes the final selected day | notifications / filtering, statistics | Intermediate |
-| `B3` | application totals double when two rules target the same app | applications / grouping | Intermediate |
-| `B4` | unread counter does not refresh after deleting a notification | notifications / state management | Beginner |
-| `B5` | snoozed notifications reappear before their snooze time | notifications / snooze | Intermediate |
-| `B6` | no empty state when a search returns no results | notifications / UI | Beginner |
-| `B7` | inbox pagination skips one notification per page | notifications / pagination | Intermediate |
-| `B8` | statistics total ignores the active filters | statistics | Intermediate |
-| `B9` | notifications with identical timestamps sort inconsistently | notifications / sorting | Intermediate |
-| `B10` | retention setting is not restored after restart | settings / persistence | Beginner |
-| `B11` | muting an application does not remove it from the inbox | applications / notifications | Intermediate |
-| `B12` | "mark all as read" ignores the active filter | notifications | Intermediate |
+| ID | Bug | Area | Difficulty | Status |
+| --- | --- | --- | --- | --- |
+| `B1` | inbox search ignores notification body text | notifications / search | Beginner | Fixed in [#28](https://github.com/AmanEmpiric25/SignalBox/pull/28) |
+| `B2` | date range filter excludes the final selected day | notifications / filtering, statistics | Intermediate | Open |
+| `B3` | application totals double when two rules target the same app | applications / grouping | Intermediate | Open |
+| `B4` | unread counter does not refresh after deleting a notification | notifications / state management | Beginner | Open |
+| `B5` | snoozed notifications reappear before their snooze time | notifications / snooze | Intermediate | Open |
+| `B6` | no empty state when a search returns no results | notifications / UI | Beginner | Open |
+| `B7` | inbox pagination skips one notification per page | notifications / pagination | Intermediate | Open |
+| `B8` | statistics total ignores the active filters | statistics | Intermediate | Open |
+| `B9` | notifications with identical timestamps sort inconsistently | notifications / sorting | Intermediate | Open |
+| `B10` | retention setting is not restored after restart | settings / persistence | Beginner | Open |
+| `B11` | muting an application does not remove it from the inbox | applications / notifications | Intermediate | Open |
+| `B12` | "mark all as read" ignores the active filter | notifications | Intermediate | Open |
 
 ---
 
 ## `B1` inbox search ignores notification body text
+
+> **Fixed** in [#28](https://github.com/AmanEmpiric25/SignalBox/pull/28). The
+> clause now matches `title OR body` with the query escaped for `LIKE`, and the
+> regression tests named below are in the suite. The description is kept for
+> reference; the reproduction steps no longer reproduce.
 
 **Area:** notifications / search  
 **Difficulty:** Beginner  
