@@ -269,13 +269,22 @@ class _AppTile extends StatelessWidget {
         '${summary.total} total'
         '${summary.hasUnread ? ' · ${summary.unread} unread' : ''}'
         '${summary.lastPostedAt == null ? '' : ' · ${summary.lastPostedAt!.relativeLabel}'}'
-        '${summary.matchingRules > 0 ? ' · ${summary.matchingRules} rule${summary.matchingRules == 1 ? '' : 's'}' : ''}',
+        '${summary.matchingRules > 0 ? ' · ${summary.matchingRules} rule${summary.matchingRules == 1 ? '' : 's'}' : ''}'
+        // Muting is easy to misread as "stop collecting". Say what it does.
+        '${summary.isMuted ? ' · muted, not in the inbox' : ''}',
       ),
-      trailing: Switch.adaptive(
-        value: !summary.isMuted,
-        onChanged: (enabled) => ref
-            .read(appMuteControllerProvider)
-            .setMuted(summary.packageName, !enabled),
+      trailing: Tooltip(
+        message: summary.isMuted
+            ? 'Unmute to show ${summary.appLabel} in the inbox again'
+            : 'Mute to keep ${summary.appLabel} out of the inbox. Its '
+                  'notifications are still recorded and still counted in '
+                  'Statistics.',
+        child: Switch.adaptive(
+          value: !summary.isMuted,
+          onChanged: (enabled) => ref
+              .read(appMuteControllerProvider)
+              .setMuted(summary.packageName, !enabled),
+        ),
       ),
       onTap: () => context.push(Routes.appDetail(summary.packageName)),
     );
