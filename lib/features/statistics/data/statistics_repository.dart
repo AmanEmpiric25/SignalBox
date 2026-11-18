@@ -16,8 +16,11 @@ class StatisticsRepository {
     final (where, args) = NotificationQuery.where(filter);
     final (joinWhere, joinArgs) = NotificationQuery.where(filter, alias: 'n');
 
+    // The headline card has to agree with the breakdowns under it, so it uses
+    // the same clause they do rather than a hard-coded one of its own.
     final totalRows = await _db.rawQuery(
-      'SELECT COUNT(*) AS c FROM notification_items WHERE is_archived = 0',
+      'SELECT COUNT(*) AS c FROM notification_items WHERE $where',
+      args,
     );
     final unreadRows = await _db.rawQuery(
       'SELECT COUNT(*) AS c FROM notification_items WHERE $where AND is_read = 0',
