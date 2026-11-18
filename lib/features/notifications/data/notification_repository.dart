@@ -9,12 +9,23 @@ import '../domain/notification_query.dart';
 ///
 /// The repository owns every SQL statement that touches notifications. UI and
 /// providers never build SQL themselves.
+///
+/// **Sort order.** Every list of notifications is ordered by [_newestFirst]:
+/// `posted_at DESC, id DESC`. The `id` tiebreaker is not cosmetic. Two
+/// notifications can share a `posted_at` to the millisecond, and without a
+/// tiebreaker SQLite may order them differently between two queries. A paged
+/// query would then be able to return the same row twice, or skip one, at a
+/// page boundary. Keeping one constant here means the inbox, the per-app list
+/// and any future query cannot disagree.
 class NotificationRepository {
   const NotificationRepository(this._db);
 
   final Database _db;
 
   static const String _table = 'notification_items';
+
+  /// The single sort order for every notification list. See the class doc.
+  static const String _newestFirst = 'posted_at DESC, id DESC';
 
   /// One page of the inbox, newest first.
   ///
@@ -31,7 +42,7 @@ class NotificationRepository {
       _table,
       where: where,
       whereArgs: args,
-      orderBy: 'posted_at DESC',
+      orderBy: _newestFirst,
       limit: limit,
       offset: offset,
     );
@@ -51,7 +62,7 @@ class NotificationRepository {
       _table,
       where: where,
       whereArgs: args,
-      orderBy: 'posted_at DESC, id DESC',
+      orderBy: _newestFirst,
     );
     return rows.map(NotificationItem.fromMap).toList();
   }
@@ -62,7 +73,7 @@ class NotificationRepository {
       _table,
       where: 'package_name = ? AND is_archived = 0',
       whereArgs: [packageName],
-      orderBy: 'posted_at DESC, id DESC',
+      orderBy: _newestFirst,
     );
     return rows.map(NotificationItem.fromMap).toList();
   }
@@ -210,12 +221,16 @@ class NotificationRepository {
   }
 
   /// Notifications whose snooze window is still open, soonest first.
+  ///
+  /// This list is ordered by wake-up time rather than by [_newestFirst], but it
+  /// carries the same `id` tiebreaker so that two snoozes set to the same
+  /// instant keep a stable order.
   Future<List<NotificationItem>> snoozed() async {
     final rows = await _db.query(
       _table,
       where: 'snooze_until IS NOT NULL AND snooze_until > ?',
       whereArgs: [DateTime.now().millisecondsSinceEpoch],
-      orderBy: 'snooze_until ASC',
+      orderBy: 'snooze_until ASC, id DESC',
     );
     return rows.map(NotificationItem.fromMap).toList();
   }
