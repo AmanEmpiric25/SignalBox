@@ -383,6 +383,75 @@ void main() {
       await repository.insert(build(package: 'com.whatsapp', title: 'Hidden'));
 
       expect(await repository.all(), hasLength(1));
+  group('markAllAsRead', () {
+    test('only marks notifications matching the filter', () async {
+      await repository.insert(build(package: 'com.whatsapp', title: 'Chat'));
+      await repository.insert(build(package: 'com.slack', title: 'Work'));
+
+      await repository.markAllAsRead(
+        const NotificationFilter(packageNames: {'com.slack'}),
+      );
+
+      final items = await repository.all();
+      final byTitle = {for (final item in items) item.title: item.isRead};
+      expect(byTitle['Work'], isTrue);
+      expect(byTitle['Chat'], isFalse);
+    });
+
+    test('an unfiltered call marks everything unread as read', () async {
+      await repository.insert(build(package: 'com.whatsapp'));
+      await repository.insert(build(package: 'com.slack'));
+
+      await repository.markAllAsRead(NotificationFilter.empty);
+
+      expect(await repository.unreadCount(), 0);
+    });
+
+    test('archived notifications are untouched by default', () async {
+      await repository.insert(build(title: 'Live'));
+      await repository.insert(build(title: 'Filed', isArchived: true));
+
+      await repository.markAllAsRead(NotificationFilter.empty);
+
+      final archived = await repository.all(
+        filter: const NotificationFilter(includeArchived: true),
+      );
+      final filed = archived.firstWhere((item) => item.title == 'Filed');
+      expect(filed.isRead, isFalse);
+    });
+
+    test('includeArchived also marks archived notifications', () async {
+      await repository.insert(build(title: 'Filed', isArchived: true));
+
+      await repository.markAllAsRead(
+        const NotificationFilter(includeArchived: true),
+      );
+
+      final archived = await repository.all(
+        filter: const NotificationFilter(includeArchived: true),
+      );
+      expect(archived.single.isRead, isTrue);
+    });
+
+    test('a search query narrows what gets marked', () async {
+      await repository.insert(build(title: 'Payment received'));
+      await repository.insert(build(title: 'Priya Sharma'));
+
+      await repository.markAllAsRead(
+        const NotificationFilter(query: 'Payment'),
+      );
+
+      final items = await repository.all();
+      final byTitle = {for (final item in items) item.title: item.isRead};
+      expect(byTitle['Payment received'], isTrue);
+      expect(byTitle['Priya Sharma'], isFalse);
+    });
+
+    test('already-read notifications stay read', () async {
+      await repository.insert(build(title: 'Seen', isRead: true));
+      await repository.markAllAsRead(NotificationFilter.empty);
+      final items = await repository.all();
+      expect(items.single.isRead, isTrue);
     });
   });
 

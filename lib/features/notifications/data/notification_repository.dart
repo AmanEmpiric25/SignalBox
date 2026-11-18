@@ -137,8 +137,24 @@ class NotificationRepository {
   }
 
   /// Marks the notifications matching the current view as read.
+  ///
+  /// [filter] is the inbox's active filter, so the button marks exactly what
+  /// the user can see and nothing else. It is built from the same
+  /// [NotificationQuery.where] clause the list itself uses, which means
+  /// archived notifications are left alone unless `includeArchived` is set, and
+  /// a notification that is still snoozed — and so absent from the list — is
+  /// not marked either.
+  ///
+  /// With no filter active this marks every unread notification, which is the
+  /// behaviour the button has always advertised.
   Future<void> markAllAsRead(NotificationFilter filter) async {
-    await _db.update(_table, {'is_read': 1}, where: 'is_read = 0');
+    final (where, args) = NotificationQuery.where(filter);
+    await _db.update(
+      _table,
+      {'is_read': 1},
+      where: '($where) AND is_read = 0',
+      whereArgs: args,
+    );
   }
 
   Future<void> setArchived(int id, {bool isArchived = true}) async {
