@@ -27,7 +27,7 @@ Ground rules for this catalogue:
 | `B1` | inbox search ignores notification body text | notifications / search | Beginner | Fixed in [#28](https://github.com/AmanEmpiric25/SignalBox/pull/28) |
 | `B2` | date range filter excludes the final selected day | notifications / filtering, statistics | Intermediate | Open |
 | `B3` | application totals double when two rules target the same app | applications / grouping | Intermediate | Open |
-| `B4` | unread counter does not refresh after deleting a notification | notifications / state management | Beginner | Open |
+| `B4` | unread counter does not refresh after deleting a notification | notifications / state management | Beginner | Fixed in [#33](https://github.com/AmanEmpiric25/SignalBox/pull/33) |
 | `B5` | snoozed notifications reappear before their snooze time | notifications / snooze | Intermediate | Open |
 | `B6` | no empty state when a search returns no results | notifications / UI | Beginner | Fixed in [#30](https://github.com/AmanEmpiric25/SignalBox/pull/30) |
 | `B7` | inbox pagination skips one notification per page | notifications / pagination | Intermediate | Open |
@@ -189,6 +189,14 @@ Either count distinct notification ids, or compute the rule count in a separate 
 ---
 
 ## `B4` unread counter does not refresh after deleting a notification
+
+> **Fixed** in [#33](https://github.com/AmanEmpiric25/SignalBox/pull/33).
+> `delete` and `deleteMany` now invalidate `unreadCountProvider`, and the
+> regression tests named below are in
+> `test/features/notifications/notification_providers_test.dart`. The
+> description is kept for reference; the reproduction steps no longer
+> reproduce.
+
 
 **Area:** notifications / state management  
 **Difficulty:** Beginner  
