@@ -26,7 +26,7 @@ Ground rules for this catalogue:
 | --- | --- | --- | --- | --- |
 | `B1` | inbox search ignores notification body text | notifications / search | Beginner | Fixed in [#28](https://github.com/AmanEmpiric25/SignalBox/pull/28) |
 | `B2` | date range filter excludes the final selected day | notifications / filtering, statistics | Intermediate | Open |
-| `B3` | application totals double when two rules target the same app | applications / grouping | Intermediate | Open |
+| `B3` | application totals double when two rules target the same app | applications / grouping | Intermediate | Fixed in [#43](https://github.com/AmanEmpiric25/SignalBox/pull/43) |
 | `B4` | unread counter does not refresh after deleting a notification | notifications / state management | Beginner | Fixed in [#33](https://github.com/AmanEmpiric25/SignalBox/pull/33) |
 | `B5` | snoozed notifications reappear before their snooze time | notifications / snooze | Intermediate | Open |
 | `B6` | no empty state when a search returns no results | notifications / UI | Beginner | Fixed in [#30](https://github.com/AmanEmpiric25/SignalBox/pull/30) |
@@ -142,6 +142,12 @@ Compare the end bound against `endOfDay`, not `startOfDay`. `DateTimeX` already 
 ---
 
 ## `B3` application totals double when two rules target the same app
+
+> **Fixed** in [#43](https://github.com/AmanEmpiric25/SignalBox/pull/43).
+> The rule count now comes from a correlated subquery instead of a second
+> LEFT JOIN, so notification rows are no longer multiplied, and the
+> regression tests named below are in the suite. The description is kept for
+> reference; the reproduction steps no longer reproduce.
 
 **Area:** applications / grouping  
 **Difficulty:** Intermediate  

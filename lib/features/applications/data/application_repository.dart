@@ -103,20 +103,25 @@ class ApplicationRepository {
   Future<List<AppSummary>> summaries() async {
     final rows = await _db.rawQuery('''
       SELECT
-        a.package_name       AS package_name,
-        a.app_label          AS app_label,
-        a.is_muted           AS is_muted,
-        COUNT(n.id)          AS total,
+        a.package_name   AS package_name,
+        a.app_label      AS app_label,
+        a.is_muted       AS is_muted,
+        COUNT(n.id)      AS total,
         SUM(CASE WHEN n.is_read = 0 THEN 1 ELSE 0 END) AS unread,
-        MAX(n.posted_at)     AS last_posted_at,
-        COUNT(DISTINCT r.id) AS matching_rules
+        MAX(n.posted_at) AS last_posted_at,
+        -- Counted in a subquery rather than a second LEFT JOIN. Joining `rules`
+        -- here would multiply the notification rows by the number of matching
+        -- rules, so an app with two rules reported double its real total and
+        -- unread count. `COUNT(DISTINCT n.id)` would repair `total` alone and
+        -- leave the `SUM(CASE ...)` still inflated.
+        (SELECT COUNT(*)
+           FROM rules r
+          WHERE r.is_enabled = 1
+            AND r.match_field = 0
+            AND r.match_value = a.package_name) AS matching_rules
       FROM app_sources a
       LEFT JOIN notification_items n
         ON n.package_name = a.package_name AND n.is_archived = 0
-      LEFT JOIN rules r
-        ON r.is_enabled = 1
-       AND r.match_field = 0
-       AND r.match_value = a.package_name
       GROUP BY a.package_name, a.app_label, a.is_muted
       ORDER BY last_posted_at DESC
     ''');
