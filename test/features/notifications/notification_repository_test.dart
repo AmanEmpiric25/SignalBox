@@ -143,6 +143,89 @@ void main() {
       final twice = await repository.all();
       expect(once.map((i) => i.id).toList(), twice.map((i) => i.id).toList());
     });
+
+    test('page() agrees with all() on tied timestamps', () async {
+      final tie = DateTime(2026, 3, 12, 14);
+      for (var i = 0; i < 6; i++) {
+        await repository.insert(build(title: 'Tied $i', postedAt: tie));
+      }
+
+      final paged = await repository.page(limit: 10, offset: 0);
+      final unpaged = await repository.all();
+
+      expect(
+        paged.map((i) => i.id).toList(),
+        unpaged.map((i) => i.id).toList(),
+      );
+    });
+
+    test('page() returns the same order when repeated', () async {
+      final tie = DateTime(2026, 3, 12, 14);
+      for (var i = 0; i < 6; i++) {
+        await repository.insert(build(title: 'Tied $i', postedAt: tie));
+      }
+
+      final once = await repository.page(limit: 10, offset: 0);
+      final twice = await repository.page(limit: 10, offset: 0);
+      expect(once.map((i) => i.id).toList(), twice.map((i) => i.id).toList());
+    });
+
+    test('paging tied timestamps neither repeats nor drops a row', () async {
+      // The practical damage of a missing tiebreaker: without a stable order
+      // SQLite may place a row on both sides of a page boundary, or on neither.
+      final tie = DateTime(2026, 3, 12, 14);
+      for (var i = 0; i < 10; i++) {
+        await repository.insert(build(title: 'Tied $i', postedAt: tie));
+      }
+
+      final first = await repository.page(limit: 5, offset: 0);
+      final second = await repository.page(limit: 5, offset: 5);
+      final ids = [...first, ...second].map((i) => i.id).toList();
+
+      expect(ids.toSet(), hasLength(10));
+      expect(ids, (await repository.all()).map((i) => i.id).toList());
+    });
+
+    test('forPackage() agrees with all() on tied timestamps', () async {
+      final tie = DateTime(2026, 3, 12, 14);
+      for (var i = 0; i < 4; i++) {
+        await repository.insert(
+          build(title: 'Tied $i', package: 'com.slack', postedAt: tie),
+        );
+      }
+
+      final perApp = await repository.forPackage('com.slack');
+      final unpaged = await repository.all();
+      expect(
+        perApp.map((i) => i.id).toList(),
+        unpaged.map((i) => i.id).toList(),
+      );
+    });
+
+    test('snoozed() breaks ties on an identical wake-up time', () async {
+      // `snooze()` derives the wake-up time from `DateTime.now()`, so a loop
+      // over it never produces a real tie. Writing the column directly is the
+      // only way to exercise the tiebreaker.
+      final until = DateTime.now()
+          .add(const Duration(hours: 3))
+          .millisecondsSinceEpoch;
+      final ids = <int>[];
+      for (var i = 0; i < 4; i++) {
+        final id = await repository.insert(build(title: 'Snoozed $i'));
+        await db.update(
+          'notification_items',
+          {'snooze_until': until},
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+        ids.add(id);
+      }
+
+      final once = await repository.snoozed();
+      final twice = await repository.snoozed();
+      expect(once.map((i) => i.id).toList(), twice.map((i) => i.id).toList());
+      expect(once.map((i) => i.id).toSet(), ids.toSet());
+    });
   });
 
   group('filtering', () {
