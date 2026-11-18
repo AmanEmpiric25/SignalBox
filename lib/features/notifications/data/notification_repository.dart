@@ -145,10 +145,15 @@ class NotificationRepository {
   /// a notification that is still snoozed — and so absent from the list — is
   /// not marked either.
   ///
-  /// With no filter active this marks every unread notification, which is the
-  /// behaviour the button has always advertised.
+  /// With no filter active this marks every unread notification in the inbox,
+  /// which is the behaviour the button has always advertised.
+  ///
+  /// Muted applications are excluded, matching [page] and [unreadCount]. The
+  /// button sits above the inbox, so marking notifications that are not in the
+  /// inbox — and are not in the badge either — would be the same confusion this
+  /// method was fixed for in the first place.
   Future<void> markAllAsRead(NotificationFilter filter) async {
-    final (where, args) = NotificationQuery.where(filter);
+    final (where, args) = NotificationQuery.where(filter, excludeMuted: true);
     await _db.update(
       _table,
       {'is_read': 1},
