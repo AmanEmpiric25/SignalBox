@@ -113,7 +113,10 @@ class InboxNotifier extends AsyncNotifier<InboxState> {
     final next = await _repository.page(
       filter: ref.read(inboxFilterProvider),
       limit: AppConstants.inboxPageSize,
-      offset: current.items.length + 1,
+      // A SQL OFFSET is the number of rows to skip, which is exactly the number
+      // already loaded. Adding one skipped a notification at every page
+      // boundary.
+      offset: current.items.length,
     );
 
     state = AsyncData(
