@@ -31,7 +31,7 @@ Ground rules for this catalogue:
 | `B5` | snoozed notifications reappear before their snooze time | notifications / snooze | Intermediate | Open |
 | `B6` | no empty state when a search returns no results | notifications / UI | Beginner | Fixed in [#30](https://github.com/AmanEmpiric25/SignalBox/pull/30) |
 | `B7` | inbox pagination skips one notification per page | notifications / pagination | Intermediate | Open |
-| `B8` | statistics total ignores the active filters | statistics | Intermediate | Open |
+| `B8` | statistics total ignores the active filters | statistics | Intermediate | Fixed in [#42](https://github.com/AmanEmpiric25/SignalBox/pull/42) |
 | `B9` | notifications with identical timestamps sort inconsistently | notifications / sorting | Intermediate | Open |
 | `B10` | retention setting is not restored after restart | settings / persistence | Beginner | Fixed in [#32](https://github.com/AmanEmpiric25/SignalBox/pull/32) |
 | `B11` | muting an application does not remove it from the inbox | applications / notifications | Intermediate | Fixed in [#44](https://github.com/AmanEmpiric25/SignalBox/pull/44) |
@@ -399,6 +399,12 @@ A SQL `OFFSET` is the number of rows to skip, which is exactly the number of row
 ---
 
 ## `B8` statistics total ignores the active filters
+
+> **Fixed** in [#42](https://github.com/AmanEmpiric25/SignalBox/pull/42).
+> The headline total now uses the same filtered clause as the breakdowns
+> below it, and the regression tests named below are in the suite. The
+> description is kept for reference; the reproduction steps no longer
+> reproduce.
 
 **Area:** statistics  
 **Difficulty:** Intermediate  
