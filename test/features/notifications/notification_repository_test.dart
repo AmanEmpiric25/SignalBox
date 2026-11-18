@@ -316,6 +316,76 @@ void main() {
     });
   });
 
+  group('muted applications', () {
+    Future<void> addApp(String package, {bool muted = false}) {
+      return db.insert('app_sources', {
+        'package_name': package,
+        'app_label': package,
+        'is_muted': muted ? 1 : 0,
+        'first_seen_at': DateTime.now().millisecondsSinceEpoch,
+      });
+    }
+
+    test('the inbox excludes a muted application', () async {
+      await addApp('com.whatsapp', muted: true);
+      await addApp('com.slack');
+      await repository.insert(build(package: 'com.whatsapp', title: 'Hidden'));
+      await repository.insert(build(package: 'com.slack', title: 'Shown'));
+
+      final inbox = await repository.page(limit: 20, offset: 0);
+      expect(inbox.map((item) => item.title), ['Shown']);
+    });
+
+    test('forPackage still lists a muted application', () async {
+      await addApp('com.whatsapp', muted: true);
+      await repository.insert(build(package: 'com.whatsapp', title: 'Hidden'));
+
+      final perApp = await repository.forPackage('com.whatsapp');
+      expect(perApp.map((item) => item.title), ['Hidden']);
+    });
+
+    test('unmuting restores the notifications with no data loss', () async {
+      await addApp('com.whatsapp', muted: true);
+      await repository.insert(build(package: 'com.whatsapp', title: 'Hidden'));
+      expect(await repository.page(limit: 20, offset: 0), isEmpty);
+
+      await db.update(
+        'app_sources',
+        {'is_muted': 0},
+        where: 'package_name = ?',
+        whereArgs: ['com.whatsapp'],
+      );
+
+      final inbox = await repository.page(limit: 20, offset: 0);
+      expect(inbox.map((item) => item.title), ['Hidden']);
+    });
+
+    test('the unread badge agrees with the inbox', () async {
+      await addApp('com.whatsapp', muted: true);
+      await addApp('com.slack');
+      await repository.insert(build(package: 'com.whatsapp'));
+      await repository.insert(build(package: 'com.slack'));
+
+      expect(await repository.unreadCount(), 1);
+    });
+
+    test('an application with no app_sources row is still shown', () async {
+      // Notifications can arrive before `syncInstalled` has registered the
+      // app, and `NOT IN` must not swallow them.
+      await repository.insert(build(package: 'com.unknown', title: 'Early'));
+
+      final inbox = await repository.page(limit: 20, offset: 0);
+      expect(inbox.map((item) => item.title), ['Early']);
+    });
+
+    test('all() is not scoped by mute', () async {
+      await addApp('com.whatsapp', muted: true);
+      await repository.insert(build(package: 'com.whatsapp', title: 'Hidden'));
+
+      expect(await repository.all(), hasLength(1));
+    });
+  });
+
   group('snoozing', () {
     test('snooze stores a future wake-up time', () async {
       final id = await repository.insert(build());

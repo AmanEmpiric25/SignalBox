@@ -8,17 +8,35 @@ import 'notification_filter.dart';
 class NotificationQuery {
   const NotificationQuery._();
 
+  /// Excludes notifications belonging to a muted application.
+  ///
+  /// A muted app keeps collecting history — the rows stay in the table and the
+  /// per-application screen and Statistics still show them — it just drops out
+  /// of the inbox. `{c}` is replaced with the caller's column prefix.
+  static const String _mutedExclusion =
+      '{c}package_name NOT IN '
+      '(SELECT package_name FROM app_sources WHERE is_muted = 1)';
+
   /// Builds the `WHERE` body (without the keyword) and its arguments.
   ///
   /// Pass [alias] when the statement joins another table, so that every
   /// column is qualified and cannot become ambiguous.
+  ///
+  /// Pass [excludeMuted] for the inbox and the unread badge, which hide muted
+  /// applications. Statistics deliberately leaves it off: muting an app stops
+  /// it cluttering the inbox, it does not erase it from the history.
   static (String where, List<Object?> args) where(
     NotificationFilter filter, {
     String alias = '',
+    bool excludeMuted = false,
   }) {
     final c = alias.isEmpty ? '' : '$alias.';
     final clauses = <String>[];
     final args = <Object?>[];
+
+    if (excludeMuted) {
+      clauses.add(_mutedExclusion.replaceAll('{c}', c));
+    }
 
     if (!filter.includeArchived) {
       clauses.add('${c}is_archived = 0');
