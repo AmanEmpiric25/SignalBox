@@ -272,6 +272,90 @@ void main() {
     });
   });
 
+  group('date range filtering', () {
+    test('a range ending today includes everything posted today', () async {
+      final now = DateTime.now();
+      await repository.insert(
+        build(
+          title: 'Today',
+          postedAt: DateTime(now.year, now.month, now.day, 9),
+        ),
+      );
+
+      final items = await repository.all(
+        filter: NotificationFilter(
+          start: now.subtract(const Duration(days: 1)),
+          end: now,
+        ),
+      );
+      expect(items.map((item) => item.title), contains('Today'));
+    });
+
+    test('the last minute of the end date is included', () async {
+      final end = DateTime(2026, 3, 12);
+      await repository.insert(
+        build(title: 'Late', postedAt: DateTime(2026, 3, 12, 23, 59)),
+      );
+
+      final items = await repository.all(
+        filter: NotificationFilter(start: DateTime(2026, 3, 11), end: end),
+      );
+      expect(items, hasLength(1));
+      expect(items.single.title, 'Late');
+    });
+
+    test('a single-day range returns that whole day', () async {
+      final day = DateTime(2026, 3, 12);
+      await repository.insert(
+        build(title: 'Morning', postedAt: DateTime(2026, 3, 12, 0, 0, 1)),
+      );
+      await repository.insert(
+        build(title: 'Evening', postedAt: DateTime(2026, 3, 12, 22, 15)),
+      );
+      await repository.insert(
+        build(title: 'Next day', postedAt: DateTime(2026, 3, 13, 0, 30)),
+      );
+
+      final items = await repository.all(
+        filter: NotificationFilter(start: day, end: day),
+      );
+      expect(
+        items.map((item) => item.title),
+        containsAll(['Morning', 'Evening']),
+      );
+      expect(items, hasLength(2));
+    });
+
+    test('the lower bound still includes midnight on the start date', () async {
+      await repository.insert(
+        build(title: 'Midnight', postedAt: DateTime(2026, 3, 12)),
+      );
+
+      final items = await repository.all(
+        filter: NotificationFilter(
+          start: DateTime(2026, 3, 12, 18, 0),
+          end: DateTime(2026, 3, 12),
+        ),
+      );
+      expect(items, hasLength(1));
+      expect(items.single.title, 'Midnight');
+    });
+
+    test('notifications after the end date are still excluded', () async {
+      await repository.insert(
+        build(title: 'Too late', postedAt: DateTime(2026, 3, 13, 0, 1)),
+      );
+
+      final items = await repository.all(
+        filter: NotificationFilter(
+          start: DateTime(2026, 3, 11),
+          end: DateTime(2026, 3, 12),
+        ),
+      );
+      expect(items, isEmpty);
+    });
+  });
+
   group('mutations', () {
     test('setRead flips the read flag', () async {
       final id = await repository.insert(build());

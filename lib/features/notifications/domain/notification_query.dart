@@ -85,8 +85,12 @@ class NotificationQuery {
     }
 
     if (filter.end != null) {
+      // The bound is inclusive, so it has to be the last instant of the end
+      // date. Comparing against `startOfDay` would drop everything posted on
+      // the final day, including every notification from today whenever the
+      // range ends now — which is what the statistics screen always asks for.
       clauses.add('${c}posted_at <= ?');
-      args.add(filter.end!.startOfDay.millisecondsSinceEpoch);
+      args.add(filter.end!.endOfDay.millisecondsSinceEpoch);
     }
 
     if (filter.onlyUnread) {
