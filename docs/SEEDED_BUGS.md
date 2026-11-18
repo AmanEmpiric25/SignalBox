@@ -30,9 +30,9 @@ Ground rules for this catalogue:
 | `B4` | unread counter does not refresh after deleting a notification | notifications / state management | Beginner | Fixed in [#33](https://github.com/AmanEmpiric25/SignalBox/pull/33) |
 | `B5` | snoozed notifications reappear before their snooze time | notifications / snooze | Intermediate | Fixed in [#38](https://github.com/AmanEmpiric25/SignalBox/pull/38) |
 | `B6` | no empty state when a search returns no results | notifications / UI | Beginner | Fixed in [#30](https://github.com/AmanEmpiric25/SignalBox/pull/30) |
-| `B7` | inbox pagination skips one notification per page | notifications / pagination | Intermediate | Open |
+| `B7` | inbox pagination skips one notification per page | notifications / pagination | Intermediate | Fixed in [#39](https://github.com/AmanEmpiric25/SignalBox/pull/39) |
 | `B8` | statistics total ignores the active filters | statistics | Intermediate | Fixed in [#42](https://github.com/AmanEmpiric25/SignalBox/pull/42) |
-| `B9` | notifications with identical timestamps sort inconsistently | notifications / sorting | Intermediate | Open |
+| `B9` | notifications with identical timestamps sort inconsistently | notifications / sorting | Intermediate | Fixed in [#40](https://github.com/AmanEmpiric25/SignalBox/pull/40) |
 | `B10` | retention setting is not restored after restart | settings / persistence | Beginner | Fixed in [#32](https://github.com/AmanEmpiric25/SignalBox/pull/32) |
 | `B11` | muting an application does not remove it from the inbox | applications / notifications | Intermediate | Fixed in [#44](https://github.com/AmanEmpiric25/SignalBox/pull/44) |
 | `B12` | "mark all as read" ignores the active filter | notifications | Intermediate | Fixed in [#41](https://github.com/AmanEmpiric25/SignalBox/pull/41) |
@@ -364,6 +364,12 @@ See the `items.isEmpty && searchQuery.isEmpty` condition in `_InboxList.build`.
 
 ## `B7` inbox pagination skips one notification per page
 
+> **Fixed** in [#39](https://github.com/AmanEmpiric25/SignalBox/pull/39).
+> The offset passed by `InboxNotifier.loadMore` is now the number of rows
+> already loaded, so nothing is skipped at a page boundary, and the
+> regression tests named below are in the suite. The description is kept for
+> reference; the reproduction steps no longer reproduce.
+
 **Area:** notifications / pagination  
 **Difficulty:** Intermediate  
 **Labels:** `bug`, `help wanted`, `intermediate`, `priority: high`
@@ -464,6 +470,13 @@ The filtered clause is already built in `load()` as `where`/`args`; the total qu
 ---
 
 ## `B9` notifications with identical timestamps sort inconsistently
+
+> **Fixed** in [#40](https://github.com/AmanEmpiric25/SignalBox/pull/40).
+> Every notification list now orders by a single `_newestFirst` constant
+> carrying the `posted_at DESC, id DESC` tiebreaker, documented on the
+> repository class, and the regression tests named below are in the suite.
+> The description is kept for reference; the reproduction steps no longer
+> reproduce.
 
 **Area:** notifications / sorting  
 **Difficulty:** Intermediate  

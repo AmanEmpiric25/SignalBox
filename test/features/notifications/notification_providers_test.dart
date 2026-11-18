@@ -135,4 +135,89 @@ void main() {
 
     expect(await container.read(unreadCountProvider.future), 0);
   });
+
+  group('pagination', () {
+    /// Inserts [count] notifications with strictly decreasing timestamps.
+    ///
+    /// Distinct timestamps keep these tests independent of `B9`: while `page()`
+    /// still lacks an id tiebreaker, rows sharing a timestamp have no
+    /// guaranteed order, which would make a paging assertion flaky for reasons
+    /// that have nothing to do with the offset.
+    Future<List<int>> insertSeries(int count) async {
+      final repository = NotificationRepository(db);
+      final base = DateTime(2026, 3, 12, 12);
+      final ids = <int>[];
+      for (var i = 0; i < count; i++) {
+        ids.add(
+          await repository.insert(
+            NotificationItem(
+              id: 0,
+              packageName: 'com.whatsapp',
+              title: 'Message $i',
+              body: 'Body $i',
+              postedAt: base.subtract(Duration(minutes: i)),
+              priority: NotificationPriority.normal,
+            ),
+          ),
+        );
+      }
+      return ids;
+    }
+
+    test(
+      'paging the whole inbox yields every notification exactly once',
+      () async {
+        await insertSeries(25);
+        final container = makeContainer();
+
+        final first = await container.read(inboxProvider.future);
+        expect(first.items, hasLength(20));
+        expect(first.hasMore, isTrue);
+
+        await container.read(inboxProvider.notifier).loadMore();
+        final loaded = container.read(inboxProvider).requireValue;
+
+        final pagedIds = loaded.items.map((item) => item.id).toList();
+        final expectedIds = (await NotificationRepository(
+          db,
+        ).all()).map((item) => item.id).toList();
+
+        expect(pagedIds, expectedIds);
+        expect(pagedIds.toSet(), hasLength(25));
+        expect(loaded.hasMore, isFalse);
+      },
+    );
+
+    test(
+      'a total that is an exact multiple of the page size pages cleanly',
+      () async {
+        await insertSeries(20);
+        final container = makeContainer();
+
+        final first = await container.read(inboxProvider.future);
+        expect(first.items, hasLength(20));
+        // A full first page cannot know it is the last one.
+        expect(first.hasMore, isTrue);
+
+        await container.read(inboxProvider.notifier).loadMore();
+        final loaded = container.read(inboxProvider).requireValue;
+
+        expect(loaded.items, hasLength(20));
+        expect(loaded.items.map((item) => item.id).toSet(), hasLength(20));
+        expect(loaded.hasMore, isFalse);
+      },
+    );
+
+    test('loadMore does not re-fetch a notification already loaded', () async {
+      await insertSeries(21);
+      final container = makeContainer();
+
+      await container.read(inboxProvider.future);
+      await container.read(inboxProvider.notifier).loadMore();
+      final loaded = container.read(inboxProvider).requireValue;
+
+      expect(loaded.items, hasLength(21));
+      expect(loaded.items.map((item) => item.id).toSet(), hasLength(21));
+    });
+  });
 }
