@@ -35,7 +35,7 @@ Ground rules for this catalogue:
 | `B9` | notifications with identical timestamps sort inconsistently | notifications / sorting | Intermediate | Open |
 | `B10` | retention setting is not restored after restart | settings / persistence | Beginner | Fixed in [#32](https://github.com/AmanEmpiric25/SignalBox/pull/32) |
 | `B11` | muting an application does not remove it from the inbox | applications / notifications | Intermediate | Fixed in [#44](https://github.com/AmanEmpiric25/SignalBox/pull/44) |
-| `B12` | "mark all as read" ignores the active filter | notifications | Intermediate | Open |
+| `B12` | "mark all as read" ignores the active filter | notifications | Intermediate | Fixed in [#41](https://github.com/AmanEmpiric25/SignalBox/pull/41) |
 
 ---
 
@@ -602,6 +602,13 @@ The inbox query will need to consider `app_sources`. Keep one source of truth fo
 ---
 
 ## `B12` "mark all as read" ignores the active filter
+
+> **Fixed** in [#41](https://github.com/AmanEmpiric25/SignalBox/pull/41).
+> `markAllAsRead` now builds its clause from the same
+> `NotificationQuery.where` the list uses, so it marks only what the active
+> filter shows, and the regression tests named below are in the suite. The
+> description is kept for reference; the reproduction steps no longer
+> reproduce.
 
 **Area:** notifications  
 **Difficulty:** Intermediate  
