@@ -34,7 +34,7 @@ Ground rules for this catalogue:
 | `B8` | statistics total ignores the active filters | statistics | Intermediate | Open |
 | `B9` | notifications with identical timestamps sort inconsistently | notifications / sorting | Intermediate | Open |
 | `B10` | retention setting is not restored after restart | settings / persistence | Beginner | Fixed in [#32](https://github.com/AmanEmpiric25/SignalBox/pull/32) |
-| `B11` | muting an application does not remove it from the inbox | applications / notifications | Intermediate | Open |
+| `B11` | muting an application does not remove it from the inbox | applications / notifications | Intermediate | Fixed in [#44](https://github.com/AmanEmpiric25/SignalBox/pull/44) |
 | `B12` | "mark all as read" ignores the active filter | notifications | Intermediate | Open |
 
 ---
@@ -542,6 +542,12 @@ It has reverted to `30 days`. Every other setting on the screen is restored corr
 ---
 
 ## `B11` muting an application does not remove it from the inbox
+
+> **Fixed** in [#44](https://github.com/AmanEmpiric25/SignalBox/pull/44).
+> The inbox and the unread badge now share an `excludeMuted` clause, while
+> the per-app screen and Statistics keep showing muted apps, and the
+> regression tests named below are in the suite. The description is kept for
+> reference; the reproduction steps no longer reproduce.
 
 **Area:** applications / notifications  
 **Difficulty:** Intermediate  
