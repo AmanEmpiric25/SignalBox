@@ -97,9 +97,13 @@ class NotificationQuery {
       clauses.add('${c}is_read = 0');
     }
 
-    // Notifications that are still snoozed stay out of every view.
+    // Notifications that are still snoozed stay out of every view. The bound is
+    // the current instant, not the end of today: `endOfDay` treats every snooze
+    // that expires later the same day as already elapsed, which is almost all of
+    // them. `NotificationRepository.snoozed()` compares against `now` too, so
+    // this keeps the inbox and the Snoozed screen on the same answer.
     clauses.add('(${c}snooze_until IS NULL OR ${c}snooze_until <= ?)');
-    args.add(DateTime.now().endOfDay.millisecondsSinceEpoch);
+    args.add(DateTime.now().millisecondsSinceEpoch);
 
     if (clauses.isEmpty) return ('1 = 1', args);
     return (clauses.join(' AND '), args);

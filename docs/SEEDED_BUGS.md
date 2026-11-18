@@ -28,7 +28,7 @@ Ground rules for this catalogue:
 | `B2` | date range filter excludes the final selected day | notifications / filtering, statistics | Intermediate | Fixed in [#37](https://github.com/AmanEmpiric25/SignalBox/pull/37) |
 | `B3` | application totals double when two rules target the same app | applications / grouping | Intermediate | Fixed in [#43](https://github.com/AmanEmpiric25/SignalBox/pull/43) |
 | `B4` | unread counter does not refresh after deleting a notification | notifications / state management | Beginner | Fixed in [#33](https://github.com/AmanEmpiric25/SignalBox/pull/33) |
-| `B5` | snoozed notifications reappear before their snooze time | notifications / snooze | Intermediate | Open |
+| `B5` | snoozed notifications reappear before their snooze time | notifications / snooze | Intermediate | Fixed in [#38](https://github.com/AmanEmpiric25/SignalBox/pull/38) |
 | `B6` | no empty state when a search returns no results | notifications / UI | Beginner | Fixed in [#30](https://github.com/AmanEmpiric25/SignalBox/pull/30) |
 | `B7` | inbox pagination skips one notification per page | notifications / pagination | Intermediate | Fixed in [#39](https://github.com/AmanEmpiric25/SignalBox/pull/39) |
 | `B8` | statistics total ignores the active filters | statistics | Intermediate | Fixed in [#42](https://github.com/AmanEmpiric25/SignalBox/pull/42) |
@@ -256,6 +256,12 @@ Compare `delete` with `archive` in the same file; `archive` already does the rig
 ---
 
 ## `B5` snoozed notifications reappear before their snooze time
+
+> **Fixed** in [#38](https://github.com/AmanEmpiric25/SignalBox/pull/38). The
+> snooze clause now compares `snooze_until` against the current instant instead
+> of the end of today, matching `NotificationRepository.snoozed()`, and the
+> regression tests named below are in the suite. The description is kept for
+> reference; the reproduction steps no longer reproduce.
 
 **Area:** notifications / snooze  
 **Difficulty:** Intermediate  
