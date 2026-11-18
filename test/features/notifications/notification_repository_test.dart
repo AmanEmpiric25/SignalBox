@@ -470,6 +470,98 @@ void main() {
     });
   });
 
+  group('markAllAsRead', () {
+    test('only marks notifications matching the filter', () async {
+      await repository.insert(build(package: 'com.whatsapp', title: 'Chat'));
+      await repository.insert(build(package: 'com.slack', title: 'Work'));
+
+      await repository.markAllAsRead(
+        const NotificationFilter(packageNames: {'com.slack'}),
+      );
+
+      final items = await repository.all();
+      final byTitle = {for (final item in items) item.title: item.isRead};
+      expect(byTitle['Work'], isTrue);
+      expect(byTitle['Chat'], isFalse);
+    });
+
+    test('an unfiltered call marks everything unread as read', () async {
+      await repository.insert(build(package: 'com.whatsapp'));
+      await repository.insert(build(package: 'com.slack'));
+
+      await repository.markAllAsRead(NotificationFilter.empty);
+
+      expect(await repository.unreadCount(), 0);
+    });
+
+    test('archived notifications are untouched by default', () async {
+      await repository.insert(build(title: 'Live'));
+      await repository.insert(build(title: 'Filed', isArchived: true));
+
+      await repository.markAllAsRead(NotificationFilter.empty);
+
+      final archived = await repository.all(
+        filter: const NotificationFilter(includeArchived: true),
+      );
+      final filed = archived.firstWhere((item) => item.title == 'Filed');
+      expect(filed.isRead, isFalse);
+    });
+
+    test('includeArchived also marks archived notifications', () async {
+      await repository.insert(build(title: 'Filed', isArchived: true));
+
+      await repository.markAllAsRead(
+        const NotificationFilter(includeArchived: true),
+      );
+
+      final archived = await repository.all(
+        filter: const NotificationFilter(includeArchived: true),
+      );
+      expect(archived.single.isRead, isTrue);
+    });
+
+    test('a search query narrows what gets marked', () async {
+      await repository.insert(build(title: 'Payment received'));
+      await repository.insert(build(title: 'Priya Sharma'));
+
+      await repository.markAllAsRead(
+        const NotificationFilter(query: 'Payment'),
+      );
+
+      final items = await repository.all();
+      final byTitle = {for (final item in items) item.title: item.isRead};
+      expect(byTitle['Payment received'], isTrue);
+      expect(byTitle['Priya Sharma'], isFalse);
+    });
+
+    test('already-read notifications stay read', () async {
+      await repository.insert(build(title: 'Seen', isRead: true));
+      await repository.markAllAsRead(NotificationFilter.empty);
+      final items = await repository.all();
+      expect(items.single.isRead, isTrue);
+    });
+
+    test('a muted application is not marked', () async {
+      // The button sits above the inbox, and the inbox hides muted apps, so
+      // marking them would mark rows the user cannot see.
+      await db.insert('app_sources', {
+        'package_name': 'com.whatsapp',
+        'app_label': 'WhatsApp',
+        'is_muted': 1,
+        'first_seen_at': DateTime.now().millisecondsSinceEpoch,
+      });
+      await repository.insert(build(package: 'com.whatsapp', title: 'Muted'));
+      await repository.insert(build(package: 'com.slack', title: 'Visible'));
+
+      await repository.markAllAsRead(NotificationFilter.empty);
+
+      final items = await repository.all();
+      final byTitle = {for (final item in items) item.title: item.isRead};
+      expect(byTitle['Visible'], isTrue);
+      expect(byTitle['Muted'], isFalse);
+    });
+  });
+
   group('snoozing', () {
     test('snooze stores a future wake-up time', () async {
       final id = await repository.insert(build());
