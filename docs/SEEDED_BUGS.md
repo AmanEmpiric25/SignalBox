@@ -32,7 +32,7 @@ Ground rules for this catalogue:
 | `B6` | no empty state when a search returns no results | notifications / UI | Beginner | Fixed in [#30](https://github.com/AmanEmpiric25/SignalBox/pull/30) |
 | `B7` | inbox pagination skips one notification per page | notifications / pagination | Intermediate | Open |
 | `B8` | statistics total ignores the active filters | statistics | Intermediate | Fixed in [#42](https://github.com/AmanEmpiric25/SignalBox/pull/42) |
-| `B9` | notifications with identical timestamps sort inconsistently | notifications / sorting | Intermediate | Open |
+| `B9` | notifications with identical timestamps sort inconsistently | notifications / sorting | Intermediate | Fixed in [#40](https://github.com/AmanEmpiric25/SignalBox/pull/40) |
 | `B10` | retention setting is not restored after restart | settings / persistence | Beginner | Fixed in [#32](https://github.com/AmanEmpiric25/SignalBox/pull/32) |
 | `B11` | muting an application does not remove it from the inbox | applications / notifications | Intermediate | Fixed in [#44](https://github.com/AmanEmpiric25/SignalBox/pull/44) |
 | `B12` | "mark all as read" ignores the active filter | notifications | Intermediate | Fixed in [#41](https://github.com/AmanEmpiric25/SignalBox/pull/41) |
@@ -458,6 +458,13 @@ The filtered clause is already built in `load()` as `where`/`args`; the total qu
 ---
 
 ## `B9` notifications with identical timestamps sort inconsistently
+
+> **Fixed** in [#40](https://github.com/AmanEmpiric25/SignalBox/pull/40).
+> Every notification list now orders by a single `_newestFirst` constant
+> carrying the `posted_at DESC, id DESC` tiebreaker, documented on the
+> repository class, and the regression tests named below are in the suite.
+> The description is kept for reference; the reproduction steps no longer
+> reproduce.
 
 **Area:** notifications / sorting  
 **Difficulty:** Intermediate  
