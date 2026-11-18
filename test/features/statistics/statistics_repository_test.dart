@@ -147,6 +147,24 @@ void main() {
     expect(stats.perDay.single.count, 2);
   });
 
+  test('a Last 7 days range counts notifications posted today', () async {
+    // Mirrors what `statisticsProvider` builds for StatsRange.last7Days: the
+    // range ends at "now", so an exclusive upper bound would drop today.
+    final now = DateTime.now();
+    await seed(postedAt: DateTime(now.year, now.month, now.day, 8));
+    await seed(postedAt: now.subtract(const Duration(days: 2)));
+
+    final stats = await statistics.load(
+      NotificationFilter(
+        start: now.subtract(const Duration(days: 7)),
+        end: now,
+      ),
+    );
+
+    expect(stats.total, 2);
+    expect(stats.perDay, hasLength(2));
+  });
+
   test('busiestDayCount and dailyAverage derive from perDay', () async {
     final today = DateTime.now();
     await seed(postedAt: today);
