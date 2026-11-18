@@ -196,4 +196,22 @@ void main() {
     expect(counted, hasLength(1));
     expect(counted.single.count, 1);
   });
+
+  test('a muted application is still counted in statistics', () async {
+    // Muting keeps an app out of the inbox; it does not erase it from the
+    // history. If this ever starts failing, the mute clause has leaked out of
+    // the inbox queries into the aggregates.
+    await db.update(
+      'app_sources',
+      {'is_muted': 1},
+      where: 'package_name = ?',
+      whereArgs: ['com.whatsapp'],
+    );
+    await seed();
+    await seed();
+
+    final stats = await statistics.load(NotificationFilter.empty);
+    expect(stats.total, 2);
+    expect(stats.perApp.single.count, 2);
+  });
 }

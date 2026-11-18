@@ -17,12 +17,16 @@ class NotificationRepository {
   static const String _table = 'notification_items';
 
   /// One page of the inbox, newest first.
+  ///
+  /// This is the inbox view, so notifications from muted applications are left
+  /// out. They are still stored, still listed by [forPackage] and still
+  /// counted in Statistics.
   Future<List<NotificationItem>> page({
     NotificationFilter filter = NotificationFilter.empty,
     required int limit,
     required int offset,
   }) async {
-    final (where, args) = NotificationQuery.where(filter);
+    final (where, args) = NotificationQuery.where(filter, excludeMuted: true);
     final rows = await _db.query(
       _table,
       where: where,
@@ -35,6 +39,10 @@ class NotificationRepository {
   }
 
   /// Every notification matching [filter] without paging.
+  ///
+  /// Unlike [page] this does **not** hide muted applications: it is the
+  /// unscoped read, used where the caller wants the whole matching set rather
+  /// than the inbox view.
   Future<List<NotificationItem>> all({
     NotificationFilter filter = NotificationFilter.empty,
   }) async {
@@ -82,10 +90,20 @@ class NotificationRepository {
     return (rows.first['c'] as int?) ?? 0;
   }
 
-  /// Number of unread, unarchived notifications.
+  /// Number of unread, unarchived notifications shown in the inbox.
+  ///
+  /// This is the badge above the list, so it has to agree with [page]: muted
+  /// applications are excluded. A badge that counted notifications the user
+  /// cannot see in the list would be unexplainable. It shares [page]'s clause
+  /// rather than hard-coding its own, so the two cannot drift apart.
   Future<int> unreadCount() async {
+    final (where, args) = NotificationQuery.where(
+      NotificationFilter.empty,
+      excludeMuted: true,
+    );
     final rows = await _db.rawQuery(
-      'SELECT COUNT(*) AS c FROM $_table WHERE is_read = 0 AND is_archived = 0',
+      'SELECT COUNT(*) AS c FROM $_table WHERE ($where) AND is_read = 0',
+      args,
     );
     return (rows.first['c'] as int?) ?? 0;
   }
