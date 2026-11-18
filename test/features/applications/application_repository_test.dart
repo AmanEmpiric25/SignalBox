@@ -260,5 +260,98 @@ void main() {
       final summaries = await applications.summaries();
       expect(summaries.single.matchingRules, 0);
     });
+
+    /// Inserts an enabled package rule targeting [package].
+    Future<void> addPackageRule(String package, String name) {
+      return db.insert('rules', {
+        'name': name,
+        'match_field': 0,
+        'match_value': package,
+        'action_type': 0,
+        'action_value': '0',
+        'is_enabled': 1,
+        'sort_order': 0,
+      });
+    }
+
+    test('two rules targeting one app do not inflate its total', () async {
+      await applications.upsert(
+        packageName: 'com.whatsapp',
+        appLabel: 'WhatsApp',
+      );
+      await addNotification('com.whatsapp');
+      await addNotification('com.whatsapp', isRead: true);
+      await addNotification('com.whatsapp');
+
+      await addPackageRule('com.whatsapp', 'High priority');
+      await addPackageRule('com.whatsapp', 'Keep forever');
+
+      final summary = (await applications.summaries()).single;
+      expect(summary.total, 3);
+      expect(summary.unread, 2);
+      expect(summary.matchingRules, 2);
+    });
+
+    test('three rules leave the total alone too', () async {
+      await applications.upsert(
+        packageName: 'com.whatsapp',
+        appLabel: 'WhatsApp',
+      );
+      await addNotification('com.whatsapp');
+
+      await addPackageRule('com.whatsapp', 'One');
+      await addPackageRule('com.whatsapp', 'Two');
+      await addPackageRule('com.whatsapp', 'Three');
+
+      final summary = (await applications.summaries()).single;
+      expect(summary.total, 1);
+      expect(summary.unread, 1);
+      expect(summary.matchingRules, 3);
+    });
+
+    test('lastPostedAt survives two matching rules', () async {
+      await applications.upsert(
+        packageName: 'com.whatsapp',
+        appLabel: 'WhatsApp',
+      );
+      final newer = DateTime(2026, 3, 12, 9);
+      await addNotification('com.whatsapp', postedAt: DateTime(2026, 3, 10, 9));
+      await addNotification('com.whatsapp', postedAt: newer);
+
+      await addPackageRule('com.whatsapp', 'One');
+      await addPackageRule('com.whatsapp', 'Two');
+
+      final summary = (await applications.summaries()).single;
+      expect(summary.lastPostedAt, newer);
+      expect(summary.total, 2);
+    });
+
+    test('an app with rules but no notifications still reports zero', () async {
+      await applications.upsert(
+        packageName: 'com.whatsapp',
+        appLabel: 'WhatsApp',
+      );
+      await addPackageRule('com.whatsapp', 'One');
+      await addPackageRule('com.whatsapp', 'Two');
+
+      final summary = (await applications.summaries()).single;
+      expect(summary.total, 0);
+      expect(summary.unread, 0);
+      expect(summary.lastPostedAt, isNull);
+      expect(summary.matchingRules, 2);
+    });
+
+    test('a rule for another app does not touch this one', () async {
+      await applications.upsert(
+        packageName: 'com.whatsapp',
+        appLabel: 'WhatsApp',
+      );
+      await addNotification('com.whatsapp');
+      await addPackageRule('com.slack', 'Slack rule');
+
+      final summary = (await applications.summaries()).single;
+      expect(summary.total, 1);
+      expect(summary.matchingRules, 0);
+    });
   });
 }
