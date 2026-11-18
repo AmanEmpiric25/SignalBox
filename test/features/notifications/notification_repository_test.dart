@@ -560,6 +560,26 @@ void main() {
       expect(byTitle['Visible'], isTrue);
       expect(byTitle['Muted'], isFalse);
     });
+
+    test('a notification snoozed for later today is not marked', () async {
+      // #41 documents that a still-snoozed notification is not marked, since
+      // it is absent from the list. That was only true on paper until this
+      // branch: with the old end-of-today bound a same-day snooze satisfied
+      // the clause and did get marked. Pinning the documented behaviour now
+      // that it actually holds.
+      final id = await repository.insert(build(title: 'Snoozed'));
+      await repository.insert(build(title: 'Visible'));
+      await repository.snooze(id, const Duration(minutes: 30));
+
+      await repository.markAllAsRead(NotificationFilter.empty);
+
+      // Read the snoozed row by id: it is absent from `all()` too, because the
+      // snooze clause is part of the shared filter.
+      expect((await repository.byId(id))!.isRead, isFalse);
+      final visible = (await repository.all()).single;
+      expect(visible.title, 'Visible');
+      expect(visible.isRead, isTrue);
+    });
   });
 
   group('snoozing', () {
