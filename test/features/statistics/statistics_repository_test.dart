@@ -147,6 +147,24 @@ void main() {
     expect(stats.perDay.single.count, 2);
   });
 
+  test('a Last 7 days range counts notifications posted today', () async {
+    // Mirrors what `statisticsProvider` builds for StatsRange.last7Days: the
+    // range ends at "now", so an exclusive upper bound would drop today.
+    final now = DateTime.now();
+    await seed(postedAt: DateTime(now.year, now.month, now.day, 8));
+    await seed(postedAt: now.subtract(const Duration(days: 2)));
+
+    final stats = await statistics.load(
+      NotificationFilter(
+        start: now.subtract(const Duration(days: 7)),
+        end: now,
+      ),
+    );
+
+    expect(stats.total, 2);
+    expect(stats.perDay, hasLength(2));
+  });
+
   test('busiestDayCount and dailyAverage derive from perDay', () async {
     final today = DateTime.now();
     await seed(postedAt: today);
@@ -213,5 +231,94 @@ void main() {
     final stats = await statistics.load(NotificationFilter.empty);
     expect(stats.total, 2);
     expect(stats.perApp.single.count, 2);
+  });
+
+  group('total respects the filter', () {
+    test('a package filter changes the total', () async {
+      await db.insert('app_sources', {
+        'package_name': 'com.slack',
+        'app_label': 'Slack',
+        'is_muted': 0,
+        'first_seen_at': DateTime.now().millisecondsSinceEpoch,
+      });
+      await seed(package: 'com.whatsapp');
+      await seed(package: 'com.whatsapp');
+      await seed(package: 'com.slack');
+
+      final all = await statistics.load(NotificationFilter.empty);
+      final slack = await statistics.load(
+        const NotificationFilter(packageNames: {'com.slack'}),
+      );
+
+      expect(all.total, 3);
+      expect(slack.total, 1);
+    });
+
+    test('the total equals the summed perDay counts', () async {
+      await seed(postedAt: DateTime(2026, 3, 10, 9));
+      await seed(postedAt: DateTime(2026, 3, 11, 9));
+      await seed(postedAt: DateTime(2026, 3, 11, 10));
+
+      // The end bound is the 12th, not the 11th, so this holds whether or not
+      // B2 (#37) has landed: the 11th's two rows are inside the range and the
+      // 10th's row is outside it under either end-of-day behaviour.
+      final stats = await statistics.load(
+        NotificationFilter(
+          start: DateTime(2026, 3, 11),
+          end: DateTime(2026, 3, 12),
+        ),
+      );
+
+      final summed = stats.perDay.fold(0, (sum, day) => sum + day.count);
+      expect(stats.total, summed);
+      expect(stats.total, 2);
+    });
+
+    test('the total equals the summed perPriority counts', () async {
+      await seed(priority: NotificationPriority.high);
+      await seed(priority: NotificationPriority.low);
+      await seed(priority: NotificationPriority.normal);
+
+      final stats = await statistics.load(NotificationFilter.empty);
+      final summed = stats.perPriority.values.fold(0, (sum, c) => sum + c);
+      expect(stats.total, summed);
+    });
+
+    test('a search query narrows the total', () async {
+      await seed(title: 'Payment received');
+      await seed(title: 'Priya Sharma');
+
+      final stats = await statistics.load(
+        const NotificationFilter(query: 'Payment'),
+      );
+      expect(stats.total, 1);
+    });
+
+    test('an empty result set reports a total of 0', () async {
+      await seed(title: 'Payment received');
+
+      final stats = await statistics.load(
+        const NotificationFilter(query: 'nothing matches this'),
+      );
+      expect(stats.total, 0);
+    });
+
+    test('archived notifications stay out of the total by default', () async {
+      await seed();
+      await notifications.insert(
+        NotificationItem(
+          id: 0,
+          packageName: 'com.whatsapp',
+          title: 'Filed',
+          body: 'Body',
+          postedAt: DateTime.now(),
+          priority: NotificationPriority.normal,
+          isArchived: true,
+        ),
+      );
+
+      final stats = await statistics.load(NotificationFilter.empty);
+      expect(stats.total, 1);
+    });
   });
 }
