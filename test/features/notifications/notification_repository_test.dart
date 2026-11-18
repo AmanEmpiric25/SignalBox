@@ -594,6 +594,54 @@ void main() {
       await repository.clearSnooze(id);
       expect((await repository.byId(id))!.snoozeUntil, isNull);
     });
+
+    test('a snoozed notification is hidden from the inbox', () async {
+      final id = await repository.insert(build(title: 'Snoozed'));
+      await repository.snooze(id, const Duration(hours: 1));
+
+      expect(await repository.all(), isEmpty);
+      expect(await repository.page(limit: 20, offset: 0), isEmpty);
+    });
+
+    test('a snooze expiring later today still hides the row', () async {
+      // The whole point of B5: a snooze that lands before midnight must not be
+      // treated as already elapsed.
+      final id = await repository.insert(build(title: 'Fifteen minutes'));
+      await repository.snooze(id, const Duration(minutes: 15));
+
+      expect(await repository.all(), isEmpty);
+    });
+
+    test(
+      'a notification whose snooze has passed is back in the inbox',
+      () async {
+        final id = await repository.insert(build(title: 'Woke up'));
+        await repository.snooze(id, const Duration(hours: -2));
+
+        final items = await repository.all();
+        expect(items, hasLength(1));
+        expect(items.single.id, id);
+      },
+    );
+
+    test('notifications that were never snoozed are unaffected', () async {
+      await repository.insert(build(title: 'Plain'));
+      final items = await repository.all();
+      expect(items, hasLength(1));
+      expect(items.single.title, 'Plain');
+    });
+
+    test('the inbox and snoozed() agree on what is snoozed', () async {
+      final id = await repository.insert(build(title: 'Snoozed'));
+      await repository.insert(build(title: 'Visible'));
+      await repository.snooze(id, const Duration(minutes: 30));
+
+      final inbox = await repository.all();
+      final snoozed = await repository.snoozed();
+
+      expect(inbox.map((item) => item.title), ['Visible']);
+      expect(snoozed.map((item) => item.title), ['Snoozed']);
+    });
   });
 
   group('retention', () {
