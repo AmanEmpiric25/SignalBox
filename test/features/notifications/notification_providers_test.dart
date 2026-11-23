@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signalbox/core/database/database_provider.dart';
 import 'package:signalbox/core/services/preferences_provider.dart';
 import 'package:signalbox/features/notifications/data/notification_repository.dart';
+import 'package:signalbox/features/notifications/domain/notification_filter.dart';
 import 'package:signalbox/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:signalbox/shared/models/notification_item.dart';
 import 'package:signalbox/shared/models/notification_priority.dart';
@@ -220,4 +221,280 @@ void main() {
       expect(loaded.items.map((item) => item.id).toSet(), hasLength(21));
     });
   });
+
+  group('filtered count', () {
+    // The "N notifications" row above the list reads filteredCountProvider.
+    // As with the unread count, every test reads it before mutating so the
+    // value is cached; an uncached provider recomputes on first read and would
+    // pass whether or not the mutation invalidated it.
+
+    late _CountingRepository repository;
+
+    ProviderContainer makeCountingContainer() {
+      repository = _CountingRepository(db);
+      final container = ProviderContainer(
+        overrides: [
+          databaseProvider.overrideWithValue(db),
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          notificationRepositoryProvider.overrideWithValue(repository),
+        ],
+      );
+      addTearDown(container.dispose);
+      return container;
+    }
+
+    Future<int> insertWith({
+      bool isRead = false,
+      NotificationPriority priority = NotificationPriority.normal,
+      String title = 'Priya Sharma',
+    }) {
+      return NotificationRepository(db).insert(
+        NotificationItem(
+          id: 0,
+          packageName: 'com.whatsapp',
+          title: title,
+          body: 'Are we still meeting at 6?',
+          postedAt: DateTime.now(),
+          priority: priority,
+          isRead: isRead,
+        ),
+      );
+    }
+
+    /// The count the database reports for the filter the inbox is using now.
+    Future<int> truth(ProviderContainer container) =>
+        repository.count(filter: container.read(inboxFilterProvider));
+
+    test('delete lowers it', () async {
+      final id = await insertWith(title: 'One');
+      await insertWith(title: 'Two');
+      await insertWith(title: 'Three');
+      final container = makeCountingContainer();
+
+      expect(await container.read(filteredCountProvider.future), 3);
+      await container.read(inboxProvider.future);
+
+      await container.read(inboxProvider.notifier).delete(id);
+
+      expect(await container.read(filteredCountProvider.future), 2);
+      expect(await truth(container), 2);
+    });
+
+    test('deleteMany lowers it by the number removed', () async {
+      final first = await insertWith(title: 'One');
+      final second = await insertWith(title: 'Two');
+      await insertWith(title: 'Three');
+      final container = makeCountingContainer();
+
+      expect(await container.read(filteredCountProvider.future), 3);
+      await container.read(inboxProvider.future);
+
+      await container.read(inboxProvider.notifier).deleteMany([first, second]);
+
+      expect(await container.read(filteredCountProvider.future), 1);
+    });
+
+    test(
+      'archive lowers it, because the default filter hides archived',
+      () async {
+        final id = await insertWith(title: 'One');
+        await insertWith(title: 'Two');
+        final container = makeCountingContainer();
+
+        expect(await container.read(filteredCountProvider.future), 2);
+        await container.read(inboxProvider.future);
+
+        await container.read(inboxProvider.notifier).archive(id);
+
+        expect(await container.read(filteredCountProvider.future), 1);
+        expect(await truth(container), 1);
+      },
+    );
+
+    test('snooze lowers it, because the inbox hides snoozed', () async {
+      final id = await insertWith(title: 'One');
+      await insertWith(title: 'Two');
+      final container = makeCountingContainer();
+
+      expect(await container.read(filteredCountProvider.future), 2);
+      await container.read(inboxProvider.future);
+
+      await container
+          .read(inboxProvider.notifier)
+          .snooze(id, const Duration(hours: 1));
+
+      expect(await container.read(filteredCountProvider.future), 1);
+      expect(await truth(container), 1);
+    });
+
+    test(
+      'the example from the bug report: delete and archive together',
+      () async {
+        final toDelete = await insertWith(title: 'One');
+        final toArchive = await insertWith(title: 'Two');
+        await insertWith(title: 'Three');
+        final container = makeCountingContainer();
+
+        expect(await container.read(filteredCountProvider.future), 3);
+        await container.read(inboxProvider.future);
+
+        final inbox = container.read(inboxProvider.notifier);
+        await inbox.delete(toDelete);
+        await inbox.archive(toArchive);
+
+        // It used to stay at 3 while the list showed one row.
+        expect(await container.read(filteredCountProvider.future), 1);
+        expect(
+          (await container.read(inboxProvider.future)).items,
+          hasLength(1),
+        );
+      },
+    );
+
+    test('setRead lowers it while "unread only" is active', () async {
+      final id = await insertWith(title: 'One');
+      await insertWith(title: 'Two');
+      final container = makeCountingContainer();
+      container.read(inboxFilterProvider.notifier).setOnlyUnread(true);
+
+      expect(await container.read(filteredCountProvider.future), 2);
+      await container.read(inboxProvider.future);
+
+      await container.read(inboxProvider.notifier).setRead(id);
+
+      expect(await container.read(filteredCountProvider.future), 1);
+      expect(await truth(container), 1);
+    });
+
+    test('markAllAsRead empties it while "unread only" is active', () async {
+      await insertWith(title: 'One');
+      await insertWith(title: 'Two');
+      final container = makeCountingContainer();
+      container.read(inboxFilterProvider.notifier).setOnlyUnread(true);
+
+      expect(await container.read(filteredCountProvider.future), 2);
+      await container.read(inboxProvider.future);
+
+      await container.read(inboxProvider.notifier).markAllAsRead();
+
+      expect(await container.read(filteredCountProvider.future), 0);
+    });
+
+    test('setPriority changes it while a priority filter is active', () async {
+      final id = await insertWith(priority: NotificationPriority.high);
+      await insertWith(priority: NotificationPriority.high, title: 'Two');
+      final container = makeCountingContainer();
+      container
+          .read(inboxFilterProvider.notifier)
+          .togglePriority(NotificationPriority.high);
+
+      expect(await container.read(filteredCountProvider.future), 2);
+      await container.read(inboxProvider.future);
+
+      await container
+          .read(inboxProvider.notifier)
+          .setPriority(id, NotificationPriority.low);
+
+      expect(await container.read(filteredCountProvider.future), 1);
+      expect(await truth(container), 1);
+    });
+
+    group('does not re-query when the count cannot have changed', () {
+      // Reading the provider again after a mutation only calls count() if the
+      // mutation invalidated it, so the number of calls is the invalidation.
+      Future<int> countCallsAfter(
+        ProviderContainer container,
+        Future<void> Function(InboxNotifier inbox) mutate,
+      ) async {
+        await container.read(filteredCountProvider.future);
+        await container.read(inboxProvider.future);
+        final before = repository.countCalls;
+
+        await mutate(container.read(inboxProvider.notifier));
+        await container.read(filteredCountProvider.future);
+
+        return repository.countCalls - before;
+      }
+
+      test('deleteMany with no ids', () async {
+        await insertWith();
+        final container = makeCountingContainer();
+
+        expect(
+          await countCallsAfter(container, (i) => i.deleteMany(const <int>[])),
+          0,
+        );
+      });
+
+      test('setRead under the default filter', () async {
+        final id = await insertWith();
+        final container = makeCountingContainer();
+
+        expect(await countCallsAfter(container, (i) => i.setRead(id)), 0);
+      });
+
+      test('markAllAsRead under the default filter', () async {
+        await insertWith();
+        final container = makeCountingContainer();
+
+        expect(await countCallsAfter(container, (i) => i.markAllAsRead()), 0);
+      });
+
+      test('setPriority with no priority filter', () async {
+        final id = await insertWith();
+        final container = makeCountingContainer();
+
+        expect(
+          await countCallsAfter(
+            container,
+            (i) => i.setPriority(id, NotificationPriority.high),
+          ),
+          0,
+        );
+      });
+
+      test('archive while archived notifications are included', () async {
+        final id = await insertWith();
+        final container = makeCountingContainer();
+        container.read(inboxFilterProvider.notifier).setIncludeArchived(true);
+
+        expect(await countCallsAfter(container, (i) => i.archive(id)), 0);
+      });
+
+      test('the mutations that do change it do re-query', () async {
+        final id = await insertWith();
+        final container = makeCountingContainer();
+
+        // Guards the guard: if counting were broken, every case above would
+        // pass for the wrong reason.
+        expect(await countCallsAfter(container, (i) => i.delete(id)), 1);
+      });
+    });
+
+    test('the unread count behaves as it did before', () async {
+      final id = await insertWith();
+      final container = makeCountingContainer();
+
+      expect(await container.read(unreadCountProvider.future), 1);
+      await container.read(inboxProvider.future);
+
+      await container.read(inboxProvider.notifier).delete(id);
+
+      expect(await container.read(unreadCountProvider.future), 0);
+    });
+  });
+}
+
+/// A repository that counts how often [count] runs, to show whether a mutation
+/// invalidated the provider that calls it.
+class _CountingRepository extends NotificationRepository {
+  _CountingRepository(super.db);
+
+  int countCalls = 0;
+
+  @override
+  Future<int> count({NotificationFilter filter = NotificationFilter.empty}) {
+    countCalls++;
+    return super.count(filter: filter);
+  }
 }
