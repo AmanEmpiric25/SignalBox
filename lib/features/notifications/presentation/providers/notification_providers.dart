@@ -137,29 +137,46 @@ class InboxNotifier extends AsyncNotifier<InboxState> {
     await _repository.setRead(id, isRead: isRead);
     _patch(id, (item) => item.copyWith(isRead: isRead));
     ref.invalidate(unreadCountProvider);
+    // Read state only decides whether a row matches under "unread only".
+    if (ref.read(inboxFilterProvider).onlyUnread) {
+      ref.invalidate(filteredCountProvider);
+    }
   }
 
   Future<void> markAllAsRead() async {
     await _repository.markAllAsRead(ref.read(inboxFilterProvider));
     ref.invalidateSelf();
     ref.invalidate(unreadCountProvider);
+    if (ref.read(inboxFilterProvider).onlyUnread) {
+      ref.invalidate(filteredCountProvider);
+    }
   }
 
   Future<void> setPriority(int id, NotificationPriority priority) async {
     await _repository.setPriority(id, priority);
     _patch(id, (item) => item.copyWith(priority: priority));
+    // Priority only decides whether a row matches under a priority filter.
+    if (ref.read(inboxFilterProvider).priorities.isNotEmpty) {
+      ref.invalidate(filteredCountProvider);
+    }
   }
 
   Future<void> archive(int id) async {
     await _repository.setArchived(id);
     _remove(id);
     ref.invalidate(unreadCountProvider);
+    // Archived rows still match once the filter includes them.
+    if (!ref.read(inboxFilterProvider).includeArchived) {
+      ref.invalidate(filteredCountProvider);
+    }
   }
 
   Future<void> snooze(int id, Duration duration) async {
     await _repository.snooze(id, duration);
     _remove(id);
     ref.invalidate(snoozedNotificationsProvider);
+    // The inbox query excludes snoozed rows whatever the filter says.
+    ref.invalidate(filteredCountProvider);
   }
 
   Future<void> delete(int id) async {
@@ -168,6 +185,8 @@ class InboxNotifier extends AsyncNotifier<InboxState> {
     // Deleting an unread notification changes the unread total, which the
     // dashboard card and the app bar badge both read from here.
     ref.invalidate(unreadCountProvider);
+    // And it removes a row from the "N notifications" count above the list.
+    ref.invalidate(filteredCountProvider);
   }
 
   Future<void> deleteMany(Iterable<int> ids) async {
@@ -177,6 +196,7 @@ class InboxNotifier extends AsyncNotifier<InboxState> {
 
     await _repository.deleteMany(idSet);
     ref.invalidate(unreadCountProvider);
+    ref.invalidate(filteredCountProvider);
 
     final current = state.valueOrNull;
     if (current == null) return;
