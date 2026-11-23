@@ -6,6 +6,7 @@ import 'package:signalbox/core/database/database_provider.dart';
 import 'package:signalbox/core/services/preferences_provider.dart';
 import 'package:signalbox/features/notifications/data/notification_repository.dart';
 import 'package:signalbox/features/notifications/presentation/inbox_page.dart';
+import 'package:signalbox/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:signalbox/shared/models/notification_item.dart';
 import 'package:signalbox/shared/models/notification_priority.dart';
 import 'package:signalbox/shared/widgets/empty_state.dart';
@@ -301,5 +302,105 @@ void main() {
 
     // The badge on the filter button counts the active constraints.
     expect(find.text('1'), findsWidgets);
+  });
+
+  group('a filter that excludes everything', () {
+    /// The filter sheet is a separate flow; these tests set the filter the way
+    /// it does, through the same notifier.
+    InboxFilterNotifier filters(WidgetTester tester) =>
+        ProviderScope.containerOf(
+          tester.element(find.byType(InboxPage)),
+        ).read(inboxFilterProvider.notifier);
+
+    testWidgets('does not claim the inbox is empty', (tester) async {
+      await addNotification(title: 'Priya Sharma');
+      await pumpInbox(tester);
+
+      filters(tester).togglePackage('com.zomato');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Priya Sharma'), findsNothing);
+      expect(find.text('No notifications match your filters'), findsOneWidget);
+      expect(
+        find.text('Try removing a filter, or widen the date range.'),
+        findsOneWidget,
+      );
+      expect(find.text('Your inbox is empty'), findsNothing);
+      // Refresh would re-fetch something that was never missing.
+      expect(find.widgetWithText(OutlinedButton, 'Refresh'), findsNothing);
+      expect(find.byIcon(Icons.filter_alt_off_rounded), findsOneWidget);
+    });
+
+    testWidgets('can be cleared from the empty state', (tester) async {
+      await addNotification(title: 'Priya Sharma');
+      await pumpInbox(tester);
+
+      filters(tester).togglePackage('com.zomato');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Clear filters'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EmptyState), findsNothing);
+      expect(find.text('Priya Sharma'), findsOneWidget);
+      // Nothing is left applied, so the "Clear all" row button is gone too.
+      expect(find.text('Clear all'), findsNothing);
+    });
+
+    testWidgets('covers the unread-only filter', (tester) async {
+      await addNotification(isRead: true);
+      await pumpInbox(tester);
+
+      filters(tester).setOnlyUnread(true);
+      await tester.pumpAndSettle();
+
+      expect(find.text('No notifications match your filters'), findsOneWidget);
+    });
+
+    testWidgets('covers a date range with nothing in it', (tester) async {
+      await addNotification();
+      await pumpInbox(tester);
+
+      filters(tester).setDateRange(DateTime(2020, 1, 1), DateTime(2020, 1, 31));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No notifications match your filters'), findsOneWidget);
+    });
+
+    testWidgets('is not shown while the filter still matches something', (
+      tester,
+    ) async {
+      await addNotification(title: 'Priya Sharma');
+      await pumpInbox(tester);
+
+      filters(tester).togglePackage('com.whatsapp');
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EmptyState), findsNothing);
+      expect(find.text('Priya Sharma'), findsOneWidget);
+    });
+
+    testWidgets('a search that matches nothing keeps its own state', (
+      tester,
+    ) async {
+      await addNotification(title: 'Priya Sharma');
+      await pumpInbox(tester);
+
+      // Query and filter together: the query is the more recent constraint.
+      filters(tester).togglePackage('com.whatsapp');
+      await tester.enterText(find.byType(TextField), 'zomato');
+      await tester.pumpAndSettle();
+
+      expect(find.text('No matches for "zomato"'), findsOneWidget);
+      expect(find.text('No notifications match your filters'), findsNothing);
+    });
+
+    testWidgets('the first-run state still appears with no filter', (
+      tester,
+    ) async {
+      await pumpInbox(tester);
+
+      expect(find.text('Your inbox is empty'), findsOneWidget);
+      expect(find.text('No notifications match your filters'), findsNothing);
+    });
   });
 }

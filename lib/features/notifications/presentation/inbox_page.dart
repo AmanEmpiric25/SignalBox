@@ -47,6 +47,12 @@ class _InboxPageState extends ConsumerState<InboxPage> {
     ref.read(inboxFilterProvider.notifier).setQuery('');
   }
 
+  /// Resets the search text and every filter, as the "Clear all" button does.
+  void _clearAll() {
+    _searchController.clear();
+    ref.read(inboxFilterProvider.notifier).reset();
+  }
+
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     final position = _scrollController.position;
@@ -150,10 +156,7 @@ class _InboxPageState extends ConsumerState<InboxPage> {
                   const Spacer(),
                   if (filter.isActive)
                     TextButton(
-                      onPressed: () {
-                        _searchController.clear();
-                        ref.read(inboxFilterProvider.notifier).reset();
-                      },
+                      onPressed: _clearAll,
                       child: const Text('Clear all'),
                     ),
                 ],
@@ -171,7 +174,11 @@ class _InboxPageState extends ConsumerState<InboxPage> {
                 isLoadingMore: state.isLoadingMore,
                 scrollController: _scrollController,
                 searchQuery: filter.query,
+                // A filter other than the search text. The search text has its
+                // own empty state, so it is left out of this check.
+                hasActiveFilters: filter.copyWith(query: '').isActive,
                 onClearSearch: _clearSearch,
+                onClearFilters: _clearAll,
                 onRefresh: () => ref.read(inboxProvider.notifier).refresh(),
               ),
             ),
@@ -188,7 +195,9 @@ class _InboxList extends ConsumerWidget {
     required this.isLoadingMore,
     required this.scrollController,
     required this.searchQuery,
+    required this.hasActiveFilters,
     required this.onClearSearch,
+    required this.onClearFilters,
     required this.onRefresh,
   });
 
@@ -203,7 +212,12 @@ class _InboxList extends ConsumerWidget {
   final bool isLoadingMore;
   final ScrollController scrollController;
   final String searchQuery;
+
+  /// Whether a package, priority, category, date, unread or archived
+  /// constraint is applied, not counting the search text.
+  final bool hasActiveFilters;
   final VoidCallback onClearSearch;
+  final VoidCallback onClearFilters;
   final Future<void> Function() onRefresh;
 
   /// Trims [query] to [_maxQueryInTitle] characters so it fits in a title.
@@ -221,12 +235,28 @@ class _InboxList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (items.isEmpty) {
-      // Two different situations, and they need different words. Nothing
-      // captured yet is a first-run state. A search that matched nothing is
-      // not: the inbox may be full, so telling that user the inbox is empty
-      // reads as data loss, and offering Refresh invites them to re-fetch
-      // something that was never missing.
+      // Three different situations, and they need different words. Nothing
+      // captured yet is a first-run state. A search or a filter that matched
+      // nothing is not: the inbox may be full, so telling that user the inbox
+      // is empty reads as data loss, and offering Refresh invites them to
+      // re-fetch something that was never missing.
+      //
+      // When both a query and a filter are active, the query wins: it is the
+      // constraint the user changed most recently, and its action only has to
+      // undo that.
       final query = searchQuery.trim();
+      if (query.isEmpty && hasActiveFilters) {
+        return EmptyState(
+          icon: Icons.filter_alt_off_rounded,
+          title: 'No notifications match your filters',
+          message: 'Try removing a filter, or widen the date range.',
+          action: OutlinedButton.icon(
+            onPressed: onClearFilters,
+            icon: const Icon(Icons.close_rounded, size: 18),
+            label: const Text('Clear filters'),
+          ),
+        );
+      }
       if (query.isEmpty) {
         return EmptyState(
           icon: Icons.inbox_rounded,
